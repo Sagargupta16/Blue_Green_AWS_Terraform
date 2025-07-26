@@ -60,10 +60,9 @@ Before you begin, ensure you have the following installed:
    ```
 
 4. **Review and customize variables**
-   ```bash
-   cp terraform.tfvars.example terraform.tfvars
-   # Edit terraform.tfvars with your specific values
-   ```
+   Edit `terraform.tfvars` with your specific values for the deployment.
+
+> **Note**: This project uses local state management. The Terraform state file will be stored locally in your project directory. For production environments, consider using remote state with S3 backend.
 
 ## 🚀 Usage
 

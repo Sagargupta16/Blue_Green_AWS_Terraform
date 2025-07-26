@@ -32,5 +32,5 @@ variable "aws_kms_alias" {
 }
 variable "build_env" {
     description = "Build Environment"
-    type = map(string)
+    type = string
 }

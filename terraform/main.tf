@@ -1,9 +1,3 @@
-provider "aws" {
-  region = var.aws_region
-}
-
-data "aws_caller_identity" "current" {}
-
 module "codecommit" {
   source = "./codecommit"
   name   = var.project_name
@@ -49,7 +43,7 @@ module "iam" {
 
 # Dev Task Definition
 module "task_definition_dev" {
-  source                       = "./taskdefination"
+  source                       = "./task_definition"
   name                         = "dev-${var.project_name}"
   aws_region                   = var.aws_region
   task_definition_image        = "${module.ecr.ecr_repository_url}:dev-latest"
@@ -65,7 +59,7 @@ module "task_definition_dev" {
 
 # Main Task Definition
 module "task_definition_main" {
-  source                       = "./taskdefination"
+  source                       = "./task_definition"
   name                         = "main-${var.project_name}"
   aws_region                   = var.aws_region
   task_definition_image        = "${module.ecr.ecr_repository_url}:main-latest"
@@ -198,7 +192,7 @@ module "codepipeline_dev" {
 
 # Test & Prod CodePipeline
 module "codepipeline_main" {
-  source                      = "./codepipline_main"
+  source                      = "./codepipeline_main"
   name                        = "main-${var.project_name}"
   pipeline_role_arn           = module.iam.codepipeline_role_arn
   artifact_bucket             = module.s3.s3_bucket_name
