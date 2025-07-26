@@ -52,7 +52,7 @@ resource "aws_lb_listener" "http" {
     type = "forward"
     forward {
       target_group {
-        arn = aws_lb_target_group.target_group2.arn
+        arn = aws_lb_target_group.target_group1.arn
       }
     }
   }
