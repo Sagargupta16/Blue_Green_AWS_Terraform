@@ -17,6 +17,18 @@ resource "aws_codepipeline" "main" {
     }
   }
 
+  trigger {
+    provider_type = "CodeStarSourceConnection"
+    git_configuration {
+      source_action_name = "Source"
+      push {
+        branches {
+          includes = [var.dev_branch_name]
+        }
+      }
+    }
+  }
+
   stage {
     name = "Source"
 
