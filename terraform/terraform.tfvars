@@ -1,6 +1,6 @@
 # AWS Configuration
-aws_region         = "us-west-2"
-availability_zones = ["us-west-2a", "us-west-2b"]
+aws_region         = "us-east-1"
+availability_zones = ["us-east-1a", "us-east-1b"]
 
 # Project Configuration
 project_name = "blue-green-dep-app"
@@ -27,3 +27,18 @@ container_port = 3000
 # CodeCommit Branch Configuration
 main_branch_name = "main"
 dev_branch_name  = "dev"
+
+# Common Tags Configuration
+common_tags = {
+  Project         = "Blue Green Deployment"
+  Environment     = "Multi-Environment"
+  Architecture    = "Blue-Green"
+  DeploymentType  = "ECS-Fargate"
+  Infrastructure  = "Terraform"
+  Owner          = "DevOps-Team"
+  CostCenter     = "Engineering"
+  Backup         = "Required"
+  Monitoring     = "Enabled"
+  Company        = "YourCompany"
+  Department     = "IT"
+}

@@ -1,28 +1,33 @@
 module "codecommit" {
   source = "./codecommit"
   name   = var.project_name
+  tags   = local.common_tags
 }
 
 module "s3" {
   source = "./s3"
   name   = var.project_name
+  tags   = local.common_tags
 }
 
 module "vpc" {
   source             = "./vpc"
   availability_zones = var.availability_zones
   vpc_cidr           = var.vpc_cidr
+  tags               = local.common_tags
 }
 
 module "kms" {
   source = "./kms"
   name   = var.project_name
+  tags   = local.common_tags
 }
 
 module "ecr" {
   source        = "./ecr"
   name          = var.project_name
   kms_key_alias = module.kms.kms_key_alias
+  tags          = local.common_tags
 
   depends_on = [module.kms]
 }
@@ -37,6 +42,7 @@ module "iam" {
   kms_key_arn             = module.kms.kms_key_arn
   codecommit_repo_arn     = module.codecommit.aws_codecommit_repository_arn
   codebuild_project_names = ["dev-${var.project_name}", "main-${var.project_name}"]
+  tags                    = local.common_tags
 
   depends_on = [module.s3, module.ecr, module.codecommit]
 }
@@ -53,6 +59,7 @@ module "task_definition_dev" {
   ecs_task_execution_role_arn  = module.iam.ecs_task_execution_role_arn
   ecs_task_role_arn            = module.iam.ecs_task_role_arn
   container_port               = var.container_port
+  tags                         = local.common_tags
 
   depends_on = [module.iam]
 }
@@ -69,6 +76,7 @@ module "task_definition_main" {
   ecs_task_execution_role_arn  = module.iam.ecs_task_execution_role_arn
   ecs_task_role_arn            = module.iam.ecs_task_role_arn
   container_port               = var.container_port
+  tags                         = local.common_tags
 
   depends_on = [module.iam]
 }
@@ -85,6 +93,7 @@ module "codebuild_dev" {
   container_name      = module.task_definition_dev.container_name
   container_port      = var.container_port
   aws_kms_alias       = module.kms.kms_key_alias
+  tags                = local.common_tags
 
   depends_on = [module.task_definition_dev]
 }
@@ -101,6 +110,7 @@ module "codebuild_main" {
   container_name      = module.task_definition_main.container_name
   container_port      = var.container_port
   aws_kms_alias       = module.kms.kms_key_alias
+  tags                = local.common_tags
 
   depends_on = [module.task_definition_main]
 }
@@ -124,6 +134,7 @@ module "codedeploy_dev" {
   desired_count          = var.desired_count
   ecs_instance_role_name = module.iam.ecs_instance_role_name
   s3_bucket_name         = module.s3.s3_bucket_name
+  tags                   = local.common_tags
 
   depends_on = [module.task_definition_dev, module.vpc]
 }
@@ -147,6 +158,7 @@ module "codedeploy_test" {
   desired_count          = var.desired_count
   ecs_instance_role_name = module.iam.ecs_instance_role_name
   s3_bucket_name         = module.s3.s3_bucket_name
+  tags                   = local.common_tags
 
   depends_on = [module.task_definition_main, module.vpc]
 }
@@ -170,6 +182,7 @@ module "codedeploy_prod" {
   desired_count          = var.desired_count
   ecs_instance_role_name = module.iam.ecs_instance_role_name
   s3_bucket_name         = module.s3.s3_bucket_name
+  tags                   = local.common_tags
 
   depends_on = [module.task_definition_main, module.vpc]
 }
@@ -186,6 +199,7 @@ module "codepipeline_dev" {
   dev_codedeploy_app_name    = module.codedeploy_dev.codedeploy_app_name
   dev_deployment_group_name  = module.codedeploy_dev.codedeploy_deployment_group_name
   kms_key_alias              = module.kms.kms_key_alias
+  tags                       = local.common_tags
 
   depends_on = [module.codedeploy_dev, module.codebuild_dev]
 }
@@ -204,6 +218,7 @@ module "codepipeline_main" {
   prod_codedeploy_app_name    = module.codedeploy_prod.codedeploy_app_name
   prod_deployment_group_name  = module.codedeploy_prod.codedeploy_deployment_group_name
   kms_key_alias               = module.kms.kms_key_alias
+  tags                        = local.common_tags
 
   depends_on = [module.codedeploy_test, module.codedeploy_prod, module.codebuild_main]
 }

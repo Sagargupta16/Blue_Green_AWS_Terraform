@@ -13,7 +13,7 @@ variable "aws_region" {
 }
 
 variable "availability_zones" {
-  description = "Availability zones"
+  description = "List of AWS availability zones for multi-AZ deployment to ensure high availability"
   type        = list(string)
   
   validation {
@@ -24,7 +24,7 @@ variable "availability_zones" {
 
 # Project Variables
 variable "project_name" {
-  description = "Project name"
+  description = "The name of the project used for resource naming and tagging across all AWS resources"
   type        = string
   
   validation {
@@ -33,72 +33,88 @@ variable "project_name" {
   }
 }
 
+variable "common_tags" {
+  description = "Common tags to be applied to all AWS resources for consistent resource management and cost tracking"
+  type        = map(string)
+  default = {
+    Project       = "Blue Green Deployment"
+    Environment   = "Multi-Environment"
+    Architecture  = "Blue-Green"
+    DeploymentType = "ECS-Fargate"
+    Infrastructure = "Terraform"
+    Owner         = "DevOps-Team"
+    CostCenter    = "Engineering"
+    Backup        = "Required"
+    Monitoring    = "Enabled"
+  }
+}
+
 # VPC Variables
 variable "vpc_cidr" {
-  description = "CIDR block for the VPC"
+  description = "CIDR block for the Virtual Private Cloud (VPC) network range"
   type        = string
 }
 
 # ECS Variables
 ## task definition
 variable "task_definition_cpu" {
-  description = "The number of cpu units used by the task definition"
+  description = "The number of CPU units allocated to the ECS task definition (256, 512, 1024, 2048, 4096)"
   type        = number
 }
 
 variable "task_definition_memory" {
-  description = "The amount of memory used by the task definition"
+  description = "The amount of memory (in MiB) allocated to the ECS task definition"
   type        = number
 }
 
 variable "task_definition_network_mode" {
-  description = "The network mode used by the task definition"
+  description = "The Docker networking mode for the ECS task definition (bridge, host, awsvpc, none)"
   type        = string
 }
 
 ### ASG Variables
 variable "asg_ec2_ami_name" {
-  description = "The name of the AMI used by the ASG EC2 instances"
+  description = "The name of the Amazon Machine Image (AMI) used for Auto Scaling Group EC2 instances"
   type        = string
 }
 
 variable "asg_ec2_instance_type" {
-  description = "The instance type of the ASG EC2 instances"
+  description = "The EC2 instance type for Auto Scaling Group instances (e.g., t3.micro, t3.small, m5.large)"
   type        = string
 }
 
 variable "asg_desired_capacity" {
-  description = "The desired capacity of the ASG"
+  description = "The desired number of EC2 instances in the Auto Scaling Group"
   type        = number
 }
 
 variable "asg_max_size" {
-  description = "The maximum size of the ASG"
+  description = "The maximum number of EC2 instances allowed in the Auto Scaling Group"
   type        = number
 }
 
 variable "asg_min_size" {
-  description = "The minimum size of the ASG"
+  description = "The minimum number of EC2 instances required in the Auto Scaling Group"
   type        = number
 }
 
 ### ECS Cluster Service Variables
 variable "desired_count" {
-  description = "The desired count of the ECS service"
+  description = "The desired number of running tasks for the ECS service across the cluster"
   type        = number
 }
 
 variable "container_port" {
-  description = "The port of the container"
+  description = "The port number on which the application container listens for incoming traffic"
   type        = number
 }
 
 variable "main_branch_name" {
-  description = "The branch name of the CodeCommit repository"
+  description = "The main production branch name of the CodeCommit repository used for production deployments"
   type        = string
 }
 
 variable "dev_branch_name" {
-  description = "The branch name of the CodeCommit repository"
+  description = "The development branch name of the CodeCommit repository used for development and testing deployments"
   type        = string
 }
