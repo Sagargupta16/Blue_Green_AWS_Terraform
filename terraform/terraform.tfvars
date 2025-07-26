@@ -1,9 +1,9 @@
 # AWS Configuration
-aws_region         = "us-west-2"
-availability_zones = ["us-west-2a", "us-west-2b"]
+aws_region         = "us-east-1"
+availability_zones = ["us-east-1a", "us-east-1b"]
 
 # Project Configuration
-project_name = "intern-project"
+project_name = "blue-green-dep-app"
 
 # VPC Configuration
 vpc_cidr = "10.0.0.0/16"
@@ -24,6 +24,18 @@ asg_min_size         = 2
 desired_count  = 2
 container_port = 3000
 
-# CodeCommit Branch Configuration
-main_branch_name = "main"
-dev_branch_name  = "dev"
+# GitHub Configuration (replacing CodeCommit)
+github_connection_arn = "arn:aws:codestar-connections:us-east-1:822546254290:connection/9bfb5e94-5865-47b9-9f0a-bf9d9f0ed56e"
+github_owner = "Sagargupta16"
+github_repo  = "Blue_Green_AWS_Terraform"
+
+# Branch Configuration
+main_branch_name = "master"
+dev_branch_name  = "feature/modifications"
+
+# Common Tags Configuration
+common_tags = {
+  Project         = "Blue Green Deployment"
+  ManagedBy      = "Terraform"
+  CreatedBy     = "Sagar"
+}

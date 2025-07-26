@@ -17,6 +17,18 @@ resource "aws_codepipeline" "main" {
     }
   }
 
+  trigger {
+    provider_type = "CodeStarSourceConnection"
+    git_configuration {
+      source_action_name = "Source"
+      push {
+        branches {
+          includes = [var.dev_branch_name]
+        }
+      }
+    }
+  }
+
   stage {
     name = "Source"
 
@@ -24,14 +36,14 @@ resource "aws_codepipeline" "main" {
       name             = "Source"
       category         = "Source"
       owner            = "AWS"
-      provider         = "CodeCommit"
+      provider         = "CodeStarSourceConnection"
       version          = "1"
       output_artifacts = ["source_output"]
 
       configuration = {
-        RepositoryName = var.codecommit_repository_name
-        BranchName     = var.dev_branch_name
-
+        ConnectionArn    = var.github_connection_arn
+        FullRepositoryId = "${var.github_owner}/${var.github_repo}"
+        BranchName       = var.dev_branch_name
       }
     }
   }

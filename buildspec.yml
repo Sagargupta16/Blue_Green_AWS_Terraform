@@ -1,0 +1,55 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: latest
+    commands:
+      - nohup /usr/local/bin/dockerd --host=unix:///var/run/docker.sock --host=tcp://127.0.0.1:2375 --storage-driver=overlay2 &
+      - timeout 15 sh -c "until docker info; do echo .; sleep 1; done"
+  pre_build:
+    commands:
+      - echo log in to Amazon ECR...
+      - aws --version
+      - echo $AWS_DEFAULT_REGION
+      - echo $ecr_repository_url
+      - echo $build_env
+      - REPOSITORY_URI=$ecr_repository_url
+      - |
+        echo "version: 0.0
+        Resources:
+          - TargetService:
+              Type: AWS::ECS::Service
+              Properties:
+                TaskDefinition: $task_definition_arn
+                LoadBalancerInfo:
+                  ContainerName: $container_name
+                  ContainerPort: $container_port" > appspec.yml
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $REPOSITORY_URI
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - IMAGE_TAG=${COMMIT_HASH:=latest}
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Building the Docker image.
+      - cd Test_App
+      - docker build -t $REPOSITORY_URI:$build_env-latest .
+      - docker tag $REPOSITORY_URI:$build_env-latest $REPOSITORY_URI:$build_env-$IMAGE_TAG
+      - echo Running tests...
+      - yarn install
+      - yarn test --coverage
+      - |
+        COVERAGE=$(yarn test --coverage | grep -Po 'All files.*? \K\d+(?=%)')
+        if [ "$COVERAGE" -lt 80 ]; then
+          echo "Test coverage is below 80%. Build failed."
+          exit 1
+        fi
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - docker push $REPOSITORY_URI:$build_env-latest
+      - docker push $REPOSITORY_URI:$build_env-$IMAGE_TAG
+      - echo write definitions file...
+artifacts:
+  files:
+    - appspec.yml

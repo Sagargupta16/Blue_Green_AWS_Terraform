@@ -49,8 +49,12 @@ resource "aws_lb_listener" "http" {
   port              = 80
   protocol          = "HTTP"
   default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.target_group1.arn
+    type = "forward"
+    forward {
+      target_group {
+        arn = aws_lb_target_group.target_group1.arn
+      }
+    }
   }
 }
 
@@ -59,7 +63,11 @@ resource "aws_lb_listener" "http_8080" {
   port              = 8080
   protocol          = "HTTP"
   default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.target_group2.arn
+    type = "forward"
+    forward {
+      target_group {
+        arn = aws_lb_target_group.target_group1.arn
+      }
+    }
   }
 }

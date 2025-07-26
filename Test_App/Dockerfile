@@ -1,5 +1,5 @@
 # Use Node.js image as base
-FROM --platform=linux/amd64 node:18-alpine AS client-builder
+FROM --platform=linux/amd64 public.ecr.aws/docker/library/node:18-alpine AS client-builder
 
 # Set the working directory for the client build
 WORKDIR /app/client
@@ -17,7 +17,7 @@ COPY client/ .
 RUN yarn build
 
 # Use Node.js image as base for server
-FROM --platform=linux/amd64 node:18-alpine AS server
+FROM --platform=linux/amd64 public.ecr.aws/docker/library/node:18-alpine AS server
 
 # Create and change to the app directory
 WORKDIR /app

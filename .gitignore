@@ -8,9 +8,6 @@
 tfplan
 tf.*
 
-# Backend config files (uncomment if they contain sensitive data)
-# backend*.hcl
-
 # Sensitive files
 *.pem
 *.key

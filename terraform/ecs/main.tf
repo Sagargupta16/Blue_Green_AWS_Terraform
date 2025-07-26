@@ -64,6 +64,16 @@ resource "aws_ecs_service" "my_ecs_service" {
   deployment_controller {
     type = "CODE_DEPLOY"
   }
+
+  # Ignore changes to task_definition since CodeDeploy will manage updates
+  lifecycle {
+    ignore_changes = [
+      task_definition,
+      desired_count,
+      load_balancer
+    ]
+  }
+
   depends_on = [module.alb, aws_ecs_cluster.cluster]
 }
 
