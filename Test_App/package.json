@@ -1,0 +1,24 @@
+{
+  "name": "project_test_repo",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "frontend-install": "cd client && yarn install",
+    "frontend-build": "cd client && yarn build",
+    "all-install": "concurrently \"yarn install\" \"yarn frontend-install\" \"yarn frontend-build \"",
+    "start": "node index.js",
+    "test": "jest"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "aws-xray-sdk": "^3.9.0",
+    "concurrently": "^8.2.2",
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^7.0.0"
+  }
+}
