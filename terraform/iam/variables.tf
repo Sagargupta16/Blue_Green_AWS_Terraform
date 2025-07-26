@@ -18,10 +18,7 @@ variable "kms_key_arn" {
   description = "The ARN of the KMS key that IAM roles will use for encryption and decryption operations"
   type = string
 }
-variable "codecommit_repo_arn" {
-  description = "The ARN of the CodeCommit repository that IAM roles will access for source code operations"
-  type = string
-}
+# Removed codecommit_repo_arn since we're using GitHub instead
 variable "codebuild_project_names" {
   description = "List of CodeBuild project names that IAM roles will need permissions to access and execute"
   type = list(string)

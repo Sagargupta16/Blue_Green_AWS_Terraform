@@ -99,12 +99,28 @@ variable "container_port" {
   type        = number
 }
 
+# GitHub repository configuration (replacing CodeCommit)
+variable "github_connection_arn" {
+  description = "The ARN of the CodeStar connection for GitHub integration"
+  type        = string
+}
+
+variable "github_owner" {
+  description = "The GitHub username or organization that owns the repository"
+  type        = string
+}
+
+variable "github_repo" {
+  description = "The name of the GitHub repository"
+  type        = string
+}
+
 variable "main_branch_name" {
-  description = "The main production branch name of the CodeCommit repository used for production deployments"
+  description = "The main production branch name of the GitHub repository used for production deployments"
   type        = string
 }
 
 variable "dev_branch_name" {
-  description = "The development branch name of the CodeCommit repository used for development and testing deployments"
+  description = "The development branch name of the GitHub repository used for development and testing deployments"
   type        = string
 }

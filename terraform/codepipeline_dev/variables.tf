@@ -10,8 +10,16 @@ variable "artifact_bucket" {
     description = "The name of the S3 bucket used to store pipeline artifacts between stages"
     type = string
 }
-variable "codecommit_repository_name" {
-    description = "The name of the CodeCommit repository containing the application source code"
+variable "github_connection_arn" {
+    description = "The ARN of the CodeStar connection for GitHub integration"
+    type = string
+}
+variable "github_owner" {
+    description = "The GitHub username or organization that owns the repository"
+    type = string
+}
+variable "github_repo" {
+    description = "The name of the GitHub repository containing the application source code"
     type = string
 }
 variable "dev_branch_name" {

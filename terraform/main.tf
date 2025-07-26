@@ -1,8 +1,9 @@
-module "codecommit" {
-  source = "./codecommit"
-  name   = var.project_name
-  tags   = local.common_tags
-}
+# CodeCommit is deprecated - using GitHub instead
+# module "codecommit" {
+#   source = "./codecommit"
+#   name   = var.project_name
+#   tags   = local.common_tags
+# }
 
 module "s3" {
   source = "./s3"
@@ -40,11 +41,11 @@ module "iam" {
 
   s3_bucket_arn           = module.s3.s3_bucket_arn
   kms_key_arn             = module.kms.kms_key_arn
-  codecommit_repo_arn     = module.codecommit.aws_codecommit_repository_arn
+  # codecommit_repo_arn     = module.codecommit.aws_codecommit_repository_arn
   codebuild_project_names = ["dev-${var.project_name}", "main-${var.project_name}"]
   tags                    = local.common_tags
 
-  depends_on = [module.s3, module.ecr, module.codecommit]
+  depends_on = [module.s3, module.ecr]
 }
 
 # Dev Task Definition
@@ -193,7 +194,9 @@ module "codepipeline_dev" {
   name                       = "dev-${var.project_name}"
   pipeline_role_arn          = module.iam.codepipeline_role_arn
   artifact_bucket            = module.s3.s3_bucket_name
-  codecommit_repository_name = module.codecommit.aws_codecommit_repository_name
+  github_connection_arn      = var.github_connection_arn
+  github_owner               = var.github_owner
+  github_repo                = var.github_repo
   dev_branch_name            = var.dev_branch_name
   dev_codebuild_project_name = module.codebuild_dev.codebuild_project_name
   dev_codedeploy_app_name    = module.codedeploy_dev.codedeploy_app_name
@@ -210,7 +213,9 @@ module "codepipeline_main" {
   name                        = "main-${var.project_name}"
   pipeline_role_arn           = module.iam.codepipeline_role_arn
   artifact_bucket             = module.s3.s3_bucket_name
-  codecommit_repository_name  = module.codecommit.aws_codecommit_repository_name
+  github_connection_arn       = var.github_connection_arn
+  github_owner                = var.github_owner
+  github_repo                 = var.github_repo
   main_branch_name            = var.main_branch_name
   test_codebuild_project_name = module.codebuild_main.codebuild_project_name
   test_codedeploy_app_name    = module.codedeploy_test.codedeploy_app_name

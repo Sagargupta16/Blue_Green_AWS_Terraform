@@ -104,13 +104,6 @@ resource "aws_iam_role" "codebuild_role" {
         },
         {
           "Effect" : "Allow",
-          "Resource" : var.codecommit_repo_arn,
-          "Action" : [
-            "codecommit:GitPull"
-          ]
-        },
-        {
-          "Effect" : "Allow",
           "Action" : [
             "codebuild:CreateReportGroup",
             "codebuild:CreateReport",
@@ -267,18 +260,6 @@ resource "aws_iam_role" "codepipeline_role" {
               ]
             }
           }
-        },
-        {
-          "Action" : [
-            "codecommit:CancelUploadArchive",
-            "codecommit:GetBranch",
-            "codecommit:GetCommit",
-            "codecommit:GetRepository",
-            "codecommit:GetUploadArchiveStatus",
-            "codecommit:UploadArchive"
-          ],
-          "Resource" : var.codecommit_repo_arn,
-          "Effect" : "Allow"
         },
         {
           "Action" : [
