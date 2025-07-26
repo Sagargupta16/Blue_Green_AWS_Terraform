@@ -31,14 +31,7 @@ dev_branch_name  = "dev"
 # Common Tags Configuration
 common_tags = {
   Project         = "Blue Green Deployment"
-  Environment     = "Multi-Environment"
-  Architecture    = "Blue-Green"
-  DeploymentType  = "ECS-Fargate"
-  Infrastructure  = "Terraform"
-  Owner          = "DevOps-Team"
-  CostCenter     = "Engineering"
-  Backup         = "Required"
-  Monitoring     = "Enabled"
-  Company        = "YourCompany"
-  Department     = "IT"
+  ManagedBy      = "Terraform"
+  CreatedBy     = "Sagar"
+  
 }

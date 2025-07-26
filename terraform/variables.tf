@@ -36,17 +36,7 @@ variable "project_name" {
 variable "common_tags" {
   description = "Common tags to be applied to all AWS resources for consistent resource management and cost tracking"
   type        = map(string)
-  default = {
-    Project       = "Blue Green Deployment"
-    Environment   = "Multi-Environment"
-    Architecture  = "Blue-Green"
-    DeploymentType = "ECS-Fargate"
-    Infrastructure = "Terraform"
-    Owner         = "DevOps-Team"
-    CostCenter    = "Engineering"
-    Backup        = "Required"
-    Monitoring    = "Enabled"
-  }
+  default     = {}
 }
 
 # VPC Variables
