@@ -15,7 +15,7 @@
   "dependencies": {
     "aws-xray-sdk": "^3.9.0",
     "concurrently": "^8.2.2",
-    "express": "^4.19.2"
+    "express": "^5.0.0"
   },
   "devDependencies": {
     "jest": "^29.7.0",
