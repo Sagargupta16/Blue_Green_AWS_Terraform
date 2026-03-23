@@ -3,7 +3,14 @@
 ## [1.1.0] - 2026-02-28
 
 - Configure Renovate for monthly grouped dependency updates
-- Update React to v19, test libraries, and CI dependencies
+
+## [1.0.1] - 2025-07-26
+
+- Swap ALB target groups to balance traffic between target_group1 and target_group2
+- Add pipeline webhook triggers for automatic GitHub push detection
+- Fix Docker Hub rate limit by using ECR Public Gallery for Node.js images
+- Migrate from CodeCommit to GitHub: update pipeline configs, IAM roles, variables
+- Update README for improved clarity
 
 ## [1.0.0] - 2025-07-26
 
