@@ -34,3 +34,8 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.bak
+
+# Added for consistency
+.env
+.env.local
+.env.*.local
