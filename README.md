@@ -1,44 +1,42 @@
 # Blue-Green Deployment with AWS Terraform
 
-A comprehensive Infrastructure as Code (IaC) solution for implementing Blue-Green deployment strategy on AWS using Terraform. This project provides a complete CI/CD pipeline with automated testing, containerized applications, and zero-downtime deployments.
+Infrastructure-as-Code for a multi-environment Blue/Green deployment pipeline on AWS. A single `terraform apply` provisions the network, registry, CI/CD, and three isolated ECS environments (dev, test, prod) for a containerized Node.js reference app.
 
 ## 🏗️ Architecture Overview
 
-This project creates a robust AWS infrastructure that includes:
-
-- **ECS Fargate** - Containerized application hosting
-- **Application Load Balancer** - Traffic routing and health checks
-- **Auto Scaling Groups** - Dynamic scaling based on demand
-- **CodePipeline** - Automated CI/CD pipeline
-- **CodeBuild** - Build and test automation
-- **CodeDeploy** - Blue-Green deployment orchestration
-- **ECR** - Docker image registry
-- **VPC** - Isolated network environment
-- **IAM** - Security and access management
-- **KMS** - Encryption key management
-- **S3** - Artifact storage
+- **ECS on EC2** — containerized application hosting with an Auto Scaling Group of container-instances (one cluster per environment)
+- **Application Load Balancer** — per-environment ALB with two target groups (blue/green) and two listeners (`:80` prod traffic, `:8080` test traffic)
+- **Auto Scaling Group + ECS Capacity Provider** — managed-scaling EC2 capacity for each cluster
+- **CodePipeline (V2)** — two pipelines (`dev`, `main`) triggered by GitHub push via a CodeStar Connection
+- **CodeBuild** — Docker image build, Jest test execution, 80 % coverage gate, ECR push
+- **CodeDeploy** — ECS blue/green with a custom `TimeBasedCanary` config (30 % traffic for 1 min, then full cutover) and automatic rollback on failure
+- **ECR** — KMS-encrypted image registry with scan-on-push
+- **VPC** — 2-AZ network, 2 public subnets, 2 private subnets, 2 NAT gateways
+- **IAM** — five scoped roles (instance / task execution / task / codebuild / codedeploy / codepipeline)
+- **KMS** — single symmetric CMK (key rotation on) shared by S3, ECR, CodeBuild, CodePipeline, CodeDeploy
+- **S3** — artifact bucket for CodeBuild/CodePipeline
 
 ## 🚀 Features
 
-- ✅ **Zero-downtime deployments** using Blue-Green strategy
-- ✅ **Automated CI/CD pipeline** with AWS CodePipeline
-- ✅ **Containerized applications** with Docker and ECS Fargate
-- ✅ **Infrastructure as Code** with Terraform modules
-- ✅ **Automated testing** integration
-- ✅ **Security best practices** with IAM roles and KMS encryption
-- ✅ **Scalable architecture** with Auto Scaling Groups
-- ✅ **Monitoring and logging** capabilities
-- ✅ **Multi-environment support** (dev/staging/production)
+- ✅ **Zero-downtime deployments** via CodeDeploy ECS blue/green (canary rollout + auto-rollback)
+- ✅ **Build-once, promote** main pipeline (same artifact goes through test → manual-approval → prod)
+- ✅ **Per-environment isolation** — dev, test, and prod each get their own ECS cluster, ALB, and ASG
+- ✅ **KMS-encrypted artifacts end-to-end** (S3, ECR, CodeBuild, CodePipeline, CodeDeploy)
+- ✅ **Least-privilege IAM** — pipeline role scoped to the services it actually uses (no `ec2:*` / `s3:*` wildcards); execution role and task role are separate identities
+- ✅ **Consistent tagging** via `provider.default_tags` — no per-resource `tags =` plumbing
+- ✅ **IMDSv2 enforced** on EC2 container-instances
+- ✅ **X-Ray distributed tracing** (daemon sidecar + SDK middleware)
+- ✅ **CI-side security scanning** — GitHub Actions workflow runs ASH (Automated Security Helper) + Checkov + `terraform fmt/validate` on every PR
+- ✅ **Dependency hygiene** — Renovate monthly grouped updates, SonarCloud connected mode
 
 ## 📋 Prerequisites
 
-Before you begin, ensure you have the following installed:
-
-- [Terraform](https://www.terraform.io/downloads.html) >= 1.0.0
-- [AWS CLI](https://aws.amazon.com/cli/) configured with appropriate credentials
-- [Docker](https://www.docker.com/get-started) for local testing
-- [Node.js](https://nodejs.org/) >= 14.x (for the test application)
+- [Terraform](https://developer.hashicorp.com/terraform/install) >= 1.1.0
+- [AWS CLI](https://aws.amazon.com/cli/) configured with credentials for the target account
+- [Docker](https://www.docker.com/get-started) for local testing and image builds
+- [Node.js](https://nodejs.org/) >= 18 (the Dockerfile uses Node 24; the reference app's React deps target Node 18+)
 - [Yarn](https://yarnpkg.com/) package manager
+- A **CodeStar Connection** to GitHub, authorized in the AWS console — its ARN is supplied via `github_connection_arn` in `terraform.tfvars`
 
 ## 🛠️ Installation
 
@@ -53,174 +51,198 @@ Before you begin, ensure you have the following installed:
    aws configure
    ```
 
-3. **Initialize Terraform**
+3. **Customize variables**
+   Edit `terraform/terraform.tfvars` — at minimum set `github_connection_arn`, `github_owner`, `github_repo`, `main_branch_name`, `dev_branch_name`.
+
+4. **Initialize Terraform**
    ```bash
    cd terraform
    terraform init
    ```
 
-4. **Review and customize variables**
-   Edit `terraform.tfvars` with your specific values for the deployment.
-
-> **Note**: This project uses local state management. The Terraform state file will be stored locally in your project directory. For production environments, consider using remote state with S3 backend.
+> **State backend:** this project currently uses local state (`terraform/terraform.tfstate`). Do **not** use this layout for production. Move state to an S3 backend with a DynamoDB lock table, and never commit state files (they can contain secrets).
 
 ## 🚀 Usage
 
 ### Deploy Infrastructure
 
-1. **Plan the deployment**
-   ```bash
-   terraform plan
-   ```
-
-2. **Apply the infrastructure**
-   ```bash
-   terraform apply
-   ```
-
-3. **Verify deployment**
-   ```bash
-   terraform output
-   ```
+```bash
+cd terraform
+terraform plan
+terraform apply
+terraform output          # prints the three ALB DNS names (dev / test / prod)
+```
 
 ### Deploy Application
 
-The application deployment is automated through CodePipeline. Simply push code to the main branch:
+Pushes to the configured branches trigger the pipelines automatically:
+
+- **dev branch** → `dev` pipeline → deploys to `dev` environment
+- **main branch** → `main` pipeline → builds once → deploys to `test` → manual approval → deploys to `prod`
 
 ```bash
-git add .
-git commit -m "Deploy new version"
-git push origin main
+git push origin <dev_branch_name>   # or main_branch_name
 ```
 
-### Local Development
+The manual approval step happens in the CodePipeline console.
 
-To run the test application locally:
+### Local Development (reference app)
 
 ```bash
 cd Test_App
-yarn install
-yarn all-install
-yarn start
+yarn all-install     # installs backend + frontend, builds React client
+yarn start           # starts Express on port 3000
+yarn test            # Jest + Supertest
 ```
 
-The application will be available at `http://localhost:3000`
+The app is available at <http://localhost:3000>.
 
 ## 📁 Project Structure
 
 ```
-├── terraform/                 # Terraform infrastructure modules
-│   ├── main.tf               # Main configuration
-│   ├── variables.tf          # Variable definitions
-│   ├── outputs.tf            # Output values
-│   ├── alb/                  # Application Load Balancer
-│   ├── asg/                  # Auto Scaling Groups
-│   ├── codebuild/            # CodeBuild configuration
-│   ├── codecommit/           # CodeCommit repository
-│   ├── codedeploy/           # CodeDeploy configuration
-│   ├── codepipeline_dev/     # Dev pipeline
-│   ├── codepipeline_main/    # Production pipeline
-│   ├── ecr/                  # Elastic Container Registry
-│   ├── ecs/                  # ECS Fargate service
-│   ├── iam/                  # IAM roles and policies
-│   ├── kms/                  # KMS encryption keys
-│   ├── s3/                   # S3 buckets
-│   ├── security-groups/      # Security group configurations
-│   ├── taskdefinition/       # ECS task definitions
-│   └── vpc/                  # VPC and networking
-├── Test_App/                 # Sample application
-│   ├── buildspec.yml         # CodeBuild specification
-│   ├── Dockerfile            # Docker configuration
-│   ├── index.js              # Backend server
-│   ├── package.json          # Dependencies
-│   ├── client/               # React frontend
-│   └── tests/                # Test files
-└── README.md                 # This file
+├── terraform/                    # Infrastructure as Code
+│   ├── main.tf                   # Root module wiring
+│   ├── variables.tf              # Input variables (validated)
+│   ├── outputs.tf                # ALB DNS outputs per environment
+│   ├── locals.tf                 # common_tags merged into provider default_tags
+│   ├── data.tf                   # aws_caller_identity
+│   ├── versions.tf               # Terraform + AWS provider pins, default_tags
+│   ├── terraform.tfvars          # Your environment-specific values
+│   ├── vpc/                      # VPC, subnets, IGW, NAT gateways, route tables
+│   ├── security-groups/          # ALB & ECS security groups
+│   ├── alb/                      # Per-env ALB + blue/green target groups + listeners
+│   ├── asg/                      # Launch template + ASG + capacity provider
+│   ├── ecs/                      # Per-env cluster + service + CW alarm (wraps alb/asg/security-groups)
+│   ├── task_definition/          # ECS task definitions (app + X-Ray sidecar)
+│   ├── codebuild/                # CodeBuild project (one per build env)
+│   ├── codedeploy/               # CodeDeploy app + deployment group (one per env)
+│   ├── codepipeline_dev/         # Dev pipeline (Source → Build → Deploy-Dev)
+│   ├── codepipeline_main/        # Main pipeline (Source → Build → Deploy-Test → Approval → Deploy-Prod)
+│   ├── ecr/                      # Private ECR repo (KMS-encrypted, scan-on-push)
+│   ├── iam/                      # All IAM roles & inline policies
+│   ├── kms/                      # Pipeline KMS CMK + alias
+│   ├── s3/                       # Artifact bucket
+│   └── codecommit/               # Deprecated (GitHub replaced CodeCommit in v1.0.1)
+├── Test_App/                     # Express + React reference application
+│   ├── buildspec.yml             # CodeBuild spec (alternate — the repo-root one is the active one)
+│   ├── Dockerfile                # Multi-stage (client builder → server)
+│   ├── index.js                  # Express backend with X-Ray SDK
+│   ├── package.json
+│   ├── client/                   # React (Create React App) frontend
+│   └── tests/                    # Jest + Supertest
+├── .github/
+│   ├── workflows/
+│   │   └── security-and-terraform.yml   # ASH + Checkov + terraform fmt/validate
+│   ├── CODEOWNERS
+│   └── pull_request_template.md
+├── buildspec.yml                 # Active CodeBuild spec (referenced by CodeBuild projects)
+├── renovate.json                 # Monthly grouped dep updates
+├── CHANGELOG.md
+├── SECURITY.md
+└── README.md
 ```
 
 ## ⚙️ Configuration
 
-### Key Variables
+### Key Variables (defaults from `terraform/terraform.tfvars`)
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `aws_region` | AWS region for deployment | `us-west-2` |
-| `project_name` | Project identifier | `intern-project` |
-| `vpc_cidr` | VPC CIDR block | `10.0.0.0/16` |
-| `availability_zones` | AZs for deployment | `["us-west-2a", "us-west-2b"]` |
+| Variable | Description | Current value |
+|---|---|---|
+| `aws_region` | AWS region | `us-east-1` |
+| `project_name` | Resource-name prefix | `blue-green-dep-app` |
+| `vpc_cidr` | VPC CIDR | `10.0.0.0/16` |
+| `availability_zones` | AZ pair for the subnets | `["us-east-1a", "us-east-1b"]` |
+| `asg_ec2_instance_type` | Container-instance type | `t2.large` |
+| `asg_desired_capacity` / `min` / `max` | ASG sizing | `2 / 2 / 4` |
+| `task_definition_cpu` / `memory` | Task sizing | `256 / 512` |
+| `container_port` | App port | `3000` |
+| `main_branch_name` / `dev_branch_name` | GitHub branches that trigger the pipelines | `master` / `feature/modifications` |
+| `github_connection_arn` | ARN of the CodeStar Connection to GitHub | _set in tfvars_ |
 
-### Environment Configuration
+### Tagging
 
-Customize your deployment by modifying `terraform/variables.tf` or creating a `terraform.tfvars` file:
+All tags are applied once at the provider level via `default_tags`:
 
 ```hcl
-aws_region = "us-east-1"
-project_name = "my-project"
-vpc_cidr = "10.0.0.0/16"
-availability_zones = ["us-east-1a", "us-east-1b"]
+provider "aws" {
+  region = var.aws_region
+  default_tags { tags = local.common_tags }
+}
 ```
 
-## 🔄 Blue-Green Deployment Process
+Modules do **not** accept or forward a `tags` variable — every taggable AWS resource inherits the project tag set automatically. The only exception is the `aws_autoscaling_group`'s `tag {}` blocks, which AWS requires as a distinct construct.
 
-1. **Blue Environment** - Current production version running
-2. **Green Environment** - New version deployed alongside blue
-3. **Health Checks** - Automated testing of green environment
-4. **Traffic Switch** - Gradual traffic routing to green environment
-5. **Monitoring** - Continuous monitoring of new deployment
-6. **Rollback** - Instant rollback capability if issues detected
+## 🔄 Blue-Green Deployment Flow
+
+```
+git push
+   │
+   ▼   (CodeStar Connection webhook, V2 pipeline trigger)
+CodePipeline
+   ├─ Source    – pull repository → S3 artifact (KMS-encrypted)
+   ├─ Build     – CodeBuild: docker build, yarn test --coverage (≥ 80 %), push to ECR
+   └─ Deploy    – CodeDeploy ECS blue/green:
+                   1. register new task set on idle (green) target group
+                   2. route test traffic via ALB :8080 for verification
+                   3. shift 30 % prod traffic (:80) for 1 minute (canary)
+                   4. shift remaining 70 %
+                   5. drain and terminate blue task set
+                   6. auto-rollback on DEPLOYMENT_FAILURE
+```
 
 ## 🧪 Testing
 
-Run the test suite:
-
 ```bash
 cd Test_App
-yarn test
+yarn test             # Jest + Supertest
+yarn test --coverage  # coverage report (CodeBuild gates on ≥ 80 %)
 ```
 
 ## 🔍 Monitoring
 
-The infrastructure includes:
-- CloudWatch logs and metrics
-- ALB health checks
-- ECS service monitoring
-- Auto Scaling metrics
+- **CloudWatch Logs** — auto-created per task (app + X-Ray sidecar streams)
+- **CloudWatch Metrics** — ECS ContainerInsights enabled on every cluster
+- **CloudWatch Alarm** — `CPUReservation ≥ 60 %` (note: `alarm_actions = []` — wire to SNS to make actionable)
+- **ALB health checks** — `GET /` every 30 s per target group
+- **X-Ray** — distributed tracing via the `aws-xray-daemon` sidecar + SDK middleware in the app
+
+## 🔐 Security
+
+- **Scoped IAM** — CodePipeline role is scoped to the services it actually invokes (CodeStar Connections, CodeBuild, CodeDeploy, S3 artifact bucket, ECR describe, KMS, PassRole). The ECS task-execution role is distinct from the task role so image-pull and log-write are separated from application-level permissions.
+- **IMDSv2 required** on the EC2 launch template.
+- **KMS key rotation** enabled on the pipeline CMK.
+- **ECR image scanning** on push.
+- **ALB** — deletion protection, invalid-header drop.
+- **CI security scanning** — every push and PR runs:
+  - `terraform fmt -check -recursive` + `terraform validate`
+  - AWS ASH (Automated Security Helper) — Docker image, aggregates Bandit, Checkov, cdk-nag, cfn-nag, detect-secrets, Semgrep, grype, syft, npm-audit
+  - Checkov standalone — SARIF output uploaded to GitHub Code Scanning
 
 ## 🚨 Troubleshooting
 
-### Common Issues
-
-1. **Terraform state conflicts**
-   ```bash
-   terraform force-unlock <lock-id>
-   ```
-
-2. **AWS permissions issues**
-   - Ensure your AWS credentials have sufficient permissions
-   - Check IAM policies for required services
-
-3. **Docker build failures**
-   - Verify Dockerfile syntax
-   - Check buildspec.yml configuration
+1. **Terraform state lock** — `terraform force-unlock <lock-id>`
+2. **Pipeline stuck at Source** — the CodeStar Connection status must be **Available**; re-authorize it in the AWS console if it is **Pending**.
+3. **CodeBuild failing on `dockerd`** — the buildspec starts the Docker daemon manually. If it hangs, set `privileged_mode = true` on the CodeBuild project (the documented-supported path).
+4. **ECR push rejected with `ImageTagAlreadyExistsException`** — only happens if you switch the repository to `IMMUTABLE` without removing the `:<env>-latest` tag push from `buildspec.yml`.
+5. **CodeDeploy rollback** — CodeDeploy rolls back automatically on `DEPLOYMENT_FAILURE`. To force a manual rollback, stop the deployment from the CodeDeploy console.
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+1. Fork and create a feature branch (`git checkout -b feature/my-change`)
+2. Commit your changes (`git commit -m 'Describe the change'`)
+3. Push the branch (`git push origin feature/my-change`)
+4. Open a Pull Request — the GitHub Actions workflow will run Terraform checks and security scans automatically.
 
 ## 📝 License
 
-This project is licensed under the ISC License - see the [LICENSE](LICENSE) file for details.
+MIT License — see the [LICENSE](LICENSE) file.
 
 ## 👥 Authors
 
-- Sagar Gupta - Initial work
+- Sagar Gupta — [@Sagargupta16](https://github.com/Sagargupta16)
 
 ## 🙏 Acknowledgments
 
-- AWS documentation and best practices
+- AWS documentation and reference architectures
 - Terraform community modules
-- Blue-Green deployment patterns
+- Blue/Green deployment patterns popularized by the CodeDeploy-on-ECS integration

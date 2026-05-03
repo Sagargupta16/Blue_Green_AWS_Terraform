@@ -1,35 +1,11 @@
-################################################################################
-# ECS Module - main.tf
-#
-# Builds a full ECS-on-EC2 environment:
-#
-#   * security-groups    (nested module) -> ALB & ECS SGs
-#   * alb                (nested module) -> internet-facing ALB + 2 TGs + 2
-#                                           listeners (ports 80 / 8080)
-#   * aws_ecs_cluster    (this file)     -> cluster with ContainerInsights
-#   * asg                (nested module) -> launch template + ASG + capacity
-#                                           provider tied to the cluster
-#   * aws_ecs_service    (this file)     -> deployment-controller = CODE_DEPLOY
-#   * aws_cloudwatch_metric_alarm (this file) -> high CPU alarm
-#
-# The service uses `ignore_changes = [task_definition, desired_count,
-# load_balancer]` so Terraform never fights CodeDeploy during a release.
-################################################################################
-
-
-################################################################################
 # Data sources
-################################################################################
 
-# SSM Parameter Store lookup for the current ECS-optimized AMI ID.
 data "aws_ssm_parameter" "ecs_node_ami" {
   name = var.asg_ec2_ami_name
 }
 
 
-################################################################################
-# Nested modules (security-groups, ALB, ASG)
-################################################################################
+# Nested modules
 
 module "security-groups" {
   source = "../security-groups"
@@ -43,8 +19,6 @@ module "alb" {
   security_group_ids = [module.security-groups.alb_security_group_id]
   subnets            = var.public_subnets
   vpc_id             = var.vpc_id
-
-  depends_on = [module.security-groups]
 }
 
 module "asg" {
@@ -59,14 +33,10 @@ module "asg" {
   private_subnets        = var.private_subnets
   ecs_cluster_name       = aws_ecs_cluster.cluster.name
   ecs_instance_role_name = var.ecs_instance_role_name
-
-  depends_on = [aws_ecs_cluster.cluster]
 }
 
 
-################################################################################
 # ECS cluster
-################################################################################
 
 resource "aws_ecs_cluster" "cluster" {
   name = "${var.name}-cluster"
@@ -78,17 +48,17 @@ resource "aws_ecs_cluster" "cluster" {
 }
 
 
-################################################################################
 # ECS service (CODE_DEPLOY controller)
-################################################################################
 
 resource "aws_ecs_service" "my_ecs_service" {
-  name                = "${var.name}-service"
-  cluster             = aws_ecs_cluster.cluster.id
-  launch_type         = "EC2"
-  scheduling_strategy = "REPLICA"
-  desired_count       = var.desired_count
-  task_definition     = var.task_definition_arn
+  name                               = "${var.name}-service"
+  cluster                            = aws_ecs_cluster.cluster.id
+  launch_type                        = "EC2"
+  scheduling_strategy                = "REPLICA"
+  desired_count                      = var.desired_count
+  task_definition                    = var.task_definition_arn
+  deployment_maximum_percent         = 200
+  deployment_minimum_healthy_percent = 100
 
   load_balancer {
     target_group_arn = module.alb.target_group1_arn
@@ -106,7 +76,6 @@ resource "aws_ecs_service" "my_ecs_service" {
     type = "CODE_DEPLOY"
   }
 
-  # CodeDeploy owns runtime updates; Terraform must not fight it.
   lifecycle {
     ignore_changes = [
       task_definition,
@@ -114,18 +83,11 @@ resource "aws_ecs_service" "my_ecs_service" {
       load_balancer
     ]
   }
-
-  depends_on = [module.alb, aws_ecs_cluster.cluster]
 }
 
 
-################################################################################
 # Monitoring
-################################################################################
 
-# High CPU reservation alarm on the cluster. NOTE: `alarm_actions` is empty -
-# findings currently surface only in the CloudWatch console. Wire an SNS topic
-# or an ASG scaling policy here to make the alarm actionable.
 resource "aws_cloudwatch_metric_alarm" "ecs-alert_High-CPUReservation" {
   alarm_name          = "${var.name}-CPU_Utilization_High"
   comparison_operator = "GreaterThanOrEqualToThreshold"

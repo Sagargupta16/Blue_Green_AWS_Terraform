@@ -1,19 +1,9 @@
-################################################################################
-# ECR Module - variables.tf
-################################################################################
-
 variable "name" {
-  description = "Name prefix of the ECR repository (<name>-ecr-repo)."
+  description = "Prefix for the ECR repository name."
   type        = string
 }
 
 variable "kms_key_alias" {
-  description = "Alias of the KMS key used to encrypt ECR images at rest."
+  description = "KMS key alias for image encryption."
   type        = string
-}
-
-variable "tags" {
-  description = "Common tags applied to the ECR repository."
-  type        = map(string)
-  default     = {}
 }

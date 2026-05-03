@@ -1,29 +1,11 @@
-################################################################################
-# CodePipeline (Dev) Module - main.tf
-#
-# Two-stage CI/CD pipeline for the development environment:
-#
-#   Source (GitHub via CodeStar Connection, push trigger on dev_branch_name)
-#     -> Build-Dev (CodeBuild)
-#     -> Deploy-Dev (CodeDeploy blue/green)
-#
-# Pipeline-type V2 is used so the `trigger` block (webhook filter on push
-# events for a specific branch) is supported.
-################################################################################
-
-
-################################################################################
 # Data sources
-################################################################################
 
 data "aws_kms_alias" "kmskey" {
   name = var.kms_key_alias
 }
 
 
-################################################################################
-# Pipeline
-################################################################################
+# Pipeline (Source -> Build -> Deploy-Dev)
 
 resource "aws_codepipeline" "main" {
   name          = "${var.name}-Codepipeline"
@@ -40,7 +22,6 @@ resource "aws_codepipeline" "main" {
     }
   }
 
-  # V2 webhook trigger: fire on pushes to the dev branch.
   trigger {
     provider_type = "CodeStarSourceConnection"
 
@@ -54,7 +35,6 @@ resource "aws_codepipeline" "main" {
     }
   }
 
-  # ---- Stage 1: Source (GitHub) --------------------------------------------
   stage {
     name = "Source"
 
@@ -74,7 +54,6 @@ resource "aws_codepipeline" "main" {
     }
   }
 
-  # ---- Stage 2: Build (CodeBuild) ------------------------------------------
   stage {
     name = "Build-Dev"
 
@@ -93,7 +72,6 @@ resource "aws_codepipeline" "main" {
     }
   }
 
-  # ---- Stage 3: Deploy (CodeDeploy blue/green) -----------------------------
   stage {
     name = "Deploy-Dev"
 

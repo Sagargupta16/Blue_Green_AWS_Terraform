@@ -1,19 +1,4 @@
-################################################################################
-# CodeDeploy Module - main.tf
-#
-# Creates one CodeDeploy application + deployment group per environment
-# (dev / test / prod). This module ALSO creates the underlying ECS cluster,
-# ALB, and ASG via the nested `ecs` module - so each environment is fully
-# isolated at the cluster/ALB level.
-#
-# Deployment config: TimeBasedCanary - 30% traffic for 1 minute, then the
-# remaining 70%. Auto-rollback fires on DEPLOYMENT_FAILURE.
-################################################################################
-
-
-################################################################################
-# Nested module (ECS cluster + ALB + ASG for this environment)
-################################################################################
+# Nested ECS stack (per environment)
 
 module "ecs" {
   source                 = "../ecs"
@@ -35,16 +20,13 @@ module "ecs" {
 }
 
 
-################################################################################
-# CodeDeploy application & custom deployment config
-################################################################################
+# CodeDeploy application & deployment config
 
 resource "aws_codedeploy_app" "my_codedeploy_app" {
   name             = "${var.name}-app"
   compute_platform = "ECS"
 }
 
-# Canary: shift 30% in the first 1-minute interval, remaining 70% at the end.
 resource "aws_codedeploy_deployment_config" "custom_bluegreen_config" {
   compute_platform       = "ECS"
   deployment_config_name = "${var.name}-bluegreen-config"
@@ -59,9 +41,7 @@ resource "aws_codedeploy_deployment_config" "custom_bluegreen_config" {
 }
 
 
-################################################################################
-# CodeDeploy deployment group (blue/green on ECS)
-################################################################################
+# Deployment group (blue/green)
 
 resource "aws_codedeploy_deployment_group" "example" {
   app_name               = aws_codedeploy_app.my_codedeploy_app.name
@@ -96,7 +76,6 @@ resource "aws_codedeploy_deployment_group" "example" {
     service_name = module.ecs.ecs_service_name
   }
 
-  # Prod traffic on :80, test (green) verification traffic on :8080.
   load_balancer_info {
     target_group_pair_info {
       prod_traffic_route {
@@ -116,10 +95,4 @@ resource "aws_codedeploy_deployment_group" "example" {
       }
     }
   }
-
-  depends_on = [
-    module.ecs,
-    aws_codedeploy_app.my_codedeploy_app,
-    aws_codedeploy_deployment_config.custom_bluegreen_config
-  ]
 }

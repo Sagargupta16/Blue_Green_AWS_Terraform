@@ -1,34 +1,15 @@
-################################################################################
-# CodeBuild Module - main.tf
-#
-# Provisions a single CodeBuild project used by the pipeline to build, test,
-# and push the application Docker image. One instance of this module is
-# created per environment (dev / main).
-#
-# Source : CODEPIPELINE (the pipeline feeds the source artifact in)
-# Image  : aws/codebuild/standard:7.0 on BUILD_GENERAL1_MEDIUM
-# Spec   : top-level ./buildspec.yml in the repository
-################################################################################
-
-
-################################################################################
 # Data sources
-################################################################################
 
-# Look up the pipeline KMS key (passed in as an alias for readability).
 data "aws_kms_alias" "kmskey" {
   name = var.aws_kms_alias
 }
 
 
-################################################################################
 # CodeBuild project
-################################################################################
 
 resource "aws_codebuild_project" "build" {
-  name         = "${var.name}-CodeBuild"
-  service_role = var.codebuild_role_arn
-
+  name           = "${var.name}-CodeBuild"
+  service_role   = var.codebuild_role_arn
   encryption_key = data.aws_kms_alias.kmskey.arn
 
   source {
@@ -40,7 +21,6 @@ resource "aws_codebuild_project" "build" {
     type = "CODEPIPELINE"
   }
 
-  # ---- Build environment ----------------------------------------------------
   environment {
     compute_type    = "BUILD_GENERAL1_MEDIUM"
     image           = "aws/codebuild/standard:7.0"
@@ -78,7 +58,6 @@ resource "aws_codebuild_project" "build" {
     }
   }
 
-  # ---- CloudWatch Logs ------------------------------------------------------
   logs_config {
     cloudwatch_logs {
       group_name  = "/aws/codebuild/${var.name}-CodeBuild"

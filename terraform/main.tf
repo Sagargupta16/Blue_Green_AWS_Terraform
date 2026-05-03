@@ -1,88 +1,41 @@
-################################################################################
-# Root main.tf
-#
-# Wires every module together. Dependency flow:
-#
-#   s3 + vpc + kms
-#          |
-#          v
-#   ecr   iam
-#     \    |
-#      v   v
-#   task_definition (dev, main)
-#          |
-#          v
-#   codebuild       (dev, main)
-#   codedeploy      (dev, test, prod)   <- builds its own ECS+ALB per env
-#          |
-#          v
-#   codepipeline    (dev, main)         <- orchestrates source/build/deploy
-#
-# Environments:
-#   * dev   - dev branch pipeline, Deploy-Dev
-#   * test  - main branch pipeline, Deploy-Test
-#   * prod  - main branch pipeline, Manual-Approval -> Deploy-Prod
-################################################################################
-
-
-################################################################################
-# Shared foundation (storage, networking, crypto, registry, IAM)
-################################################################################
-
-# Source control is on GitHub via a CodeStar Connection; the CodeCommit
-# module below is intentionally left commented out.
-# module "codecommit" {
-#   source = "./codecommit"
-#   name   = var.project_name
-#   tags   = local.common_tags
-# }
+# Foundation
 
 module "s3" {
   source = "./s3"
   name   = var.project_name
-  tags   = local.common_tags
 }
 
 module "vpc" {
   source             = "./vpc"
   availability_zones = var.availability_zones
   vpc_cidr           = var.vpc_cidr
-  tags               = local.common_tags
 }
 
 module "kms" {
   source = "./kms"
   name   = var.project_name
-  tags   = local.common_tags
 }
 
 module "ecr" {
   source        = "./ecr"
   name          = var.project_name
   kms_key_alias = module.kms.kms_key_alias
-  tags          = local.common_tags
-
-  depends_on = [module.kms]
 }
 
 module "iam" {
-  source     = "./iam"
-  name       = var.project_name
-  region     = var.aws_region
-  account_id = data.aws_caller_identity.current.account_id
-
+  source                  = "./iam"
+  name                    = var.project_name
+  region                  = var.aws_region
+  account_id              = data.aws_caller_identity.current.account_id
   s3_bucket_arn           = module.s3.s3_bucket_arn
   kms_key_arn             = module.kms.kms_key_arn
   codebuild_project_names = ["dev-${var.project_name}", "main-${var.project_name}"]
-  tags                    = local.common_tags
 
   depends_on = [module.s3, module.ecr]
 }
 
 
-################################################################################
-# Task definitions (one per build_env / image tag)
-################################################################################
+# Task definitions
 
 module "task_definition_dev" {
   source                       = "./task_definition"
@@ -95,9 +48,6 @@ module "task_definition_dev" {
   ecs_task_execution_role_arn  = module.iam.ecs_task_execution_role_arn
   ecs_task_role_arn            = module.iam.ecs_task_role_arn
   container_port               = var.container_port
-  tags                         = local.common_tags
-
-  depends_on = [module.iam]
 }
 
 module "task_definition_main" {
@@ -111,15 +61,10 @@ module "task_definition_main" {
   ecs_task_execution_role_arn  = module.iam.ecs_task_execution_role_arn
   ecs_task_role_arn            = module.iam.ecs_task_role_arn
   container_port               = var.container_port
-  tags                         = local.common_tags
-
-  depends_on = [module.iam]
 }
 
 
-################################################################################
-# CodeBuild (one per build_env)
-################################################################################
+# CodeBuild
 
 module "codebuild_dev" {
   source              = "./codebuild"
@@ -132,9 +77,6 @@ module "codebuild_dev" {
   container_name      = module.task_definition_dev.container_name
   container_port      = var.container_port
   aws_kms_alias       = module.kms.kms_key_alias
-  tags                = local.common_tags
-
-  depends_on = [module.task_definition_dev]
 }
 
 module "codebuild_main" {
@@ -148,15 +90,10 @@ module "codebuild_main" {
   container_name      = module.task_definition_main.container_name
   container_port      = var.container_port
   aws_kms_alias       = module.kms.kms_key_alias
-  tags                = local.common_tags
-
-  depends_on = [module.task_definition_main]
 }
 
 
-################################################################################
-# CodeDeploy (one per environment - each instantiates its own ECS + ALB)
-################################################################################
+# CodeDeploy (one per environment)
 
 module "codedeploy_dev" {
   source                 = "./codedeploy"
@@ -176,9 +113,6 @@ module "codedeploy_dev" {
   desired_count          = var.desired_count
   ecs_instance_role_name = module.iam.ecs_instance_role_name
   s3_bucket_name         = module.s3.s3_bucket_name
-  tags                   = local.common_tags
-
-  depends_on = [module.task_definition_dev, module.vpc]
 }
 
 module "codedeploy_test" {
@@ -199,9 +133,6 @@ module "codedeploy_test" {
   desired_count          = var.desired_count
   ecs_instance_role_name = module.iam.ecs_instance_role_name
   s3_bucket_name         = module.s3.s3_bucket_name
-  tags                   = local.common_tags
-
-  depends_on = [module.task_definition_main, module.vpc]
 }
 
 module "codedeploy_prod" {
@@ -222,15 +153,10 @@ module "codedeploy_prod" {
   desired_count          = var.desired_count
   ecs_instance_role_name = module.iam.ecs_instance_role_name
   s3_bucket_name         = module.s3.s3_bucket_name
-  tags                   = local.common_tags
-
-  depends_on = [module.task_definition_main, module.vpc]
 }
 
 
-################################################################################
 # CodePipelines
-################################################################################
 
 module "codepipeline_dev" {
   source                     = "./codepipeline_dev"
@@ -245,9 +171,6 @@ module "codepipeline_dev" {
   dev_codedeploy_app_name    = module.codedeploy_dev.codedeploy_app_name
   dev_deployment_group_name  = module.codedeploy_dev.codedeploy_deployment_group_name
   kms_key_alias              = module.kms.kms_key_alias
-  tags                       = local.common_tags
-
-  depends_on = [module.codedeploy_dev, module.codebuild_dev]
 }
 
 module "codepipeline_main" {
@@ -265,7 +188,4 @@ module "codepipeline_main" {
   prod_codedeploy_app_name    = module.codedeploy_prod.codedeploy_app_name
   prod_deployment_group_name  = module.codedeploy_prod.codedeploy_deployment_group_name
   kms_key_alias               = module.kms.kms_key_alias
-  tags                        = local.common_tags
-
-  depends_on = [module.codedeploy_test, module.codedeploy_prod, module.codebuild_main]
 }

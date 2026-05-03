@@ -1,109 +1,74 @@
-################################################################################
-# ECS Module - variables.tf
-################################################################################
-
-
-################################################################################
-# Naming & networking
-################################################################################
-
 variable "name" {
-  description = "Base name used for the ECS cluster, service, ALB, and ASG."
+  description = "Base name for the ECS cluster, service, and nested resources."
   type        = string
 }
 
 variable "vpc_id" {
-  description = "ID of the VPC where ECS resources are deployed."
+  description = "VPC ID."
   type        = string
 }
 
 variable "public_subnets" {
-  description = "Public subnet IDs where the ALB is placed."
+  description = "Public subnet IDs for the ALB."
   type        = list(string)
 }
 
 variable "private_subnets" {
-  description = "Private subnet IDs where container-instances and tasks run."
+  description = "Private subnet IDs for tasks and container-instances."
   type        = list(string)
 }
 
-
-################################################################################
-# ASG / EC2 capacity
-################################################################################
-
 variable "asg_ec2_ami_name" {
-  description = "SSM parameter name for the ECS-optimized AMI (e.g. /aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id)."
+  description = "SSM parameter name for the ECS-optimized AMI."
   type        = string
 }
 
 variable "asg_ec2_instance_type" {
-  description = "EC2 instance type for ECS container-instances."
+  description = "EC2 instance type for container-instances."
   type        = string
 }
 
 variable "asg_desired_capacity" {
-  description = "Desired number of EC2 container-instances."
+  description = "Desired container-instance count."
   type        = number
 }
 
 variable "asg_max_size" {
-  description = "Maximum number of EC2 container-instances."
+  description = "Maximum container-instance count."
   type        = number
 }
 
 variable "asg_min_size" {
-  description = "Minimum number of EC2 container-instances."
+  description = "Minimum container-instance count."
   type        = number
 }
 
-
-################################################################################
-# ECS service / task
-################################################################################
-
 variable "desired_count" {
-  description = "Desired number of running ECS tasks."
+  description = "Desired running task count."
   type        = number
 }
 
 variable "container_name" {
-  description = "Name of the application container in the task definition."
+  description = "Application container name."
   type        = string
 }
 
 variable "container_port" {
-  description = "Port the application container listens on."
+  description = "Application container port."
   type        = number
 }
 
 variable "task_definition_arn" {
-  description = "ARN of the ECS task definition the service runs."
+  description = "ECS task definition ARN."
   type        = string
 }
 
-
-################################################################################
-# External identities & shared buckets
-################################################################################
-
 variable "ecs_instance_role_name" {
-  description = "Name of the IAM role attached to container-instances via instance profile."
+  description = "IAM role name for container-instances."
   type        = string
 }
 
 variable "s3_bucket_name" {
-  description = "Artifact bucket name (passed through for parity with codedeploy module)."
+  description = "Shared artifact bucket name."
   type        = string
-}
-
-
-################################################################################
-# Tagging
-################################################################################
-
-variable "tags" {
-  description = "Common tags applied to ECS resources."
-  type        = map(string)
-  default     = {}
 }

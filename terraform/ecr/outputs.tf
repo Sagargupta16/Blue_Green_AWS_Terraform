@@ -1,13 +1,9 @@
-################################################################################
-# ECR Module - outputs.tf
-################################################################################
-
 output "ecr_repository_url" {
-  description = "URL of the ECR repository (used as the image registry in task definitions and CodeBuild)."
+  description = "ECR repository URL."
   value       = aws_ecr_repository.repo.repository_url
 }
 
 output "ecr_repo_arn" {
-  description = "ARN of the ECR repository."
+  description = "ECR repository ARN."
   value       = aws_ecr_repository.repo.arn
 }

@@ -1,8 +1,4 @@
-################################################################################
-# Root versions.tf
-#
-# Provider and Terraform version pins.
-################################################################################
+# Providers
 
 terraform {
   required_version = ">= 1.1.0"
@@ -21,4 +17,8 @@ terraform {
 
 provider "aws" {
   region = var.aws_region
+
+  default_tags {
+    tags = local.common_tags
+  }
 }

@@ -1,79 +1,49 @@
-################################################################################
-# ASG Module - variables.tf
-################################################################################
-
-
-################################################################################
-# Naming & cluster linkage
-################################################################################
-
 variable "name" {
-  description = "Base name for launch template, ASG, and capacity provider."
+  description = "Base name for the launch template, ASG, and capacity provider."
   type        = string
 }
 
 variable "ecs_cluster_name" {
-  description = "Name of the ECS cluster the instances will join."
+  description = "Target ECS cluster name."
   type        = string
 }
 
 variable "ecs_instance_role_name" {
-  description = "Name of the IAM role attached to container-instances via instance profile."
+  description = "IAM role name for container-instances."
   type        = string
 }
 
-
-################################################################################
-# EC2 launch-template parameters
-################################################################################
-
 variable "asg_ec2_image_id" {
-  description = "AMI ID for the ECS container-instances (resolved from SSM upstream)."
+  description = "AMI ID for the launch template."
   type        = string
 }
 
 variable "asg_ec2_instance_type" {
-  description = "EC2 instance type for container-instances."
+  description = "EC2 instance type."
   type        = string
 }
 
 variable "security_group_ids" {
-  description = "Security group IDs attached to launched instances."
+  description = "Security group IDs attached to instances."
   type        = list(string)
 }
 
-
-################################################################################
-# ASG sizing & placement
-################################################################################
-
 variable "asg_desired_capacity" {
-  description = "Desired number of instances."
+  description = "Desired instance count."
   type        = number
 }
 
 variable "asg_max_size" {
-  description = "Maximum number of instances."
+  description = "Maximum instance count."
   type        = number
 }
 
 variable "asg_min_size" {
-  description = "Minimum number of instances."
+  description = "Minimum instance count."
   type        = number
 }
 
 variable "private_subnets" {
-  description = "Private subnet IDs the ASG may place instances in."
+  description = "Private subnet IDs for instance placement."
   type        = list(string)
-}
-
-
-################################################################################
-# Tagging
-################################################################################
-
-variable "tags" {
-  description = "Common tags applied to ASG resources."
-  type        = map(string)
-  default     = {}
 }

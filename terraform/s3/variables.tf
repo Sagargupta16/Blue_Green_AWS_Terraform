@@ -1,14 +1,4 @@
-################################################################################
-# S3 Module - variables.tf
-################################################################################
-
 variable "name" {
-  description = "Name prefix for the artifact bucket (<name>-artifact-bucket-<randompet>)."
+  description = "Prefix for the artifact bucket name."
   type        = string
-}
-
-variable "tags" {
-  description = "Common tags applied to the bucket."
-  type        = map(string)
-  default     = {}
 }

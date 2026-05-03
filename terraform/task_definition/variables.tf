@@ -1,74 +1,44 @@
-################################################################################
-# Task Definition Module - variables.tf
-################################################################################
-
-
-################################################################################
-# Naming & region
-################################################################################
-
 variable "name" {
-  description = "Base name used for the task family and container definitions."
+  description = "Base name for the task family."
   type        = string
 }
 
 variable "aws_region" {
-  description = "AWS region where the task definition is registered; injected into awslogs options."
+  description = "Region injected into awslogs options."
   type        = string
 }
 
-
-################################################################################
-# Container image and sizing
-################################################################################
-
 variable "task_definition_image" {
-  description = "Docker image URI (ECR repository URL + tag) for the application container."
+  description = "Application container image URI."
   type        = string
 }
 
 variable "task_definition_cpu" {
-  description = "Task-level CPU units (256, 512, 1024, 2048, 4096)."
+  description = "Task-level CPU units."
   type        = number
 }
 
 variable "task_definition_memory" {
-  description = "Task-level memory in MiB."
+  description = "Task-level memory (MiB)."
   type        = number
 }
 
 variable "task_definition_network_mode" {
-  description = "Docker network mode for the task (bridge, host, awsvpc, none)."
+  description = "Docker network mode."
   type        = string
 }
 
 variable "container_port" {
-  description = "Container port the application listens on."
+  description = "Application container port."
   type        = number
 }
 
-
-################################################################################
-# IAM identities
-################################################################################
-
 variable "ecs_task_execution_role_arn" {
-  description = "ARN of the role the ECS agent assumes to pull images & write logs (execution role)."
+  description = "Execution role ARN (image pull and log write)."
   type        = string
 }
 
 variable "ecs_task_role_arn" {
-  description = "ARN of the role the application container assumes at runtime (task role)."
+  description = "Task role ARN (application runtime identity)."
   type        = string
-}
-
-
-################################################################################
-# Tagging
-################################################################################
-
-variable "tags" {
-  description = "Common tags applied to the task definition."
-  type        = map(string)
-  default     = {}
 }

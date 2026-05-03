@@ -1,14 +1,4 @@
-################################################################################
-# KMS Module - variables.tf
-################################################################################
-
 variable "name" {
-  description = "Base name used for the KMS key and its alias (alias/<name>-kms-key)."
+  description = "Base name for the KMS key and alias."
   type        = string
-}
-
-variable "tags" {
-  description = "Common tags applied to KMS resources."
-  type        = map(string)
-  default     = {}
 }
