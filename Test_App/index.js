@@ -1,5 +1,6 @@
 const express = require("express");
 const app = express();
+app.disable("x-powered-by");
 var AWSXRay = require("aws-xray-sdk");
 app.use(AWSXRay.express.openSegment("Green Blue Deployment Test App"));
 AWSXRay.config([AWSXRay.plugins.ECSPlugin]);

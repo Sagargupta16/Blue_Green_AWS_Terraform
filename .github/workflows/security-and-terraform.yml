@@ -1,18 +1,9 @@
-###############################################################################
 # Security & Terraform CI
 #
-# Triggers on every push and pull_request against the main branches.
-#
-# Three jobs run in parallel:
-#   1. terraform-checks  -> terraform fmt + terraform validate for every module
-#   2. ash               -> AWS Automated Security Helper (aggregates bandit,
-#                           checkov, cdk-nag, cfn-nag, detect-secrets, semgrep,
-#                           grype, syft, npm-audit, etc.) via its official
-#                           Docker image
-#   3. checkov           -> direct Checkov scan of the terraform/ tree as a
-#                           fast, always-runnable fallback with a SARIF upload
-#                           to GitHub Code Scanning
-###############################################################################
+# Jobs:
+#   1. terraform-checks - terraform fmt + validate
+#   2. ash              - AWS Automated Security Helper (aggregate scan)
+#   3. checkov          - direct Checkov scan, SARIF to GitHub Code Scanning
 
 name: security-and-terraform
 
@@ -23,30 +14,27 @@ on:
     branches: [master, main]
   workflow_dispatch:
 
+# Minimum workflow-level permissions. Writes are scoped per job.
 permissions:
   contents: read
-  # needed for upload-sarif -> GitHub Code Scanning
-  security-events: write
-  # needed when checkov posts PR comments
-  pull-requests: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  ##############################################################################
-  # 1. Terraform fmt + validate for every module
-  ##############################################################################
+  # 1. Terraform fmt + validate
   terraform-checks:
     name: Terraform fmt & validate
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
         with:
           terraform_version: 1.12.2
 
@@ -62,25 +50,16 @@ jobs:
         run: terraform validate -no-color
         working-directory: terraform
 
-  ##############################################################################
   # 2. AWS Automated Security Helper (ASH) scan
-  #
-  # Runs the official ASH container against the repository root. ASH executes
-  # every bundled scanner (bandit, checkov, cdk-nag, cfn-nag, detect-secrets,
-  # semgrep, grype, syft, npm-audit) and writes a consolidated report into
-  # ash_output/.
-  #
-  # The job does not fail the build on findings (continue-on-error) so that
-  # contributors get visibility without blocking every PR. Promote to a hard
-  # gate once the existing findings are addressed.
-  ##############################################################################
   ash:
     name: AWS Automated Security Helper
     runs-on: ubuntu-latest
     continue-on-error: true
+    permissions:
+      contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Run ASH (Docker)
         run: |
@@ -96,7 +75,7 @@ jobs:
 
       - name: Upload ASH report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ash-report
           path: ash_output/
@@ -115,23 +94,21 @@ jobs:
             echo "No aggregated_results.txt produced - check the ash-report artifact." >> "$GITHUB_STEP_SUMMARY"
           fi
 
-  ##############################################################################
-  # 3. Checkov (standalone, always runs)
-  #
-  # Uses the official bridgecrewio/checkov-action so it works even if the ASH
-  # container is slow to pull. Produces SARIF that's uploaded to GitHub Code
-  # Scanning so findings appear on the Security tab.
-  ##############################################################################
+  # 3. Checkov (SARIF -> GitHub Code Scanning)
   checkov:
     name: Checkov (Terraform)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # required by github/codeql-action/upload-sarif
+      security-events: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Run Checkov
         id: checkov
-        uses: bridgecrewio/checkov-action@master
+        uses: bridgecrewio/checkov-action@99bb2caf247dfd9f03cf984373bc6043d4e32ebf # v12.1347.0
         with:
           directory: terraform
           framework: terraform
@@ -142,14 +119,14 @@ jobs:
 
       - name: Upload SARIF to GitHub Code Scanning
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@0daab03d71ff584ef619d027a3fd9146679c5d84 # v3
         with:
           sarif_file: checkov-results.sarif
           category: checkov
 
       - name: Upload raw Checkov report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: checkov-report
           path: checkov-results.sarif
