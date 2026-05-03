@@ -1,11 +1,37 @@
+################################################################################
+# CodePipeline (Main) Module - main.tf
+#
+# Five-stage CI/CD pipeline for the production track:
+#
+#   Source (GitHub, push trigger on main_branch_name)
+#     -> Build (CodeBuild)                       [build once]
+#     -> Deploy-Test    (CodeDeploy blue/green)
+#     -> Manual-Approval
+#     -> Deploy-Prod    (CodeDeploy blue/green)  [reuses the test artifact]
+#
+# "Build once, promote the same artifact" is enforced by reusing the
+# `build_output_test` artifact across both Deploy stages, so prod runs the
+# exact image that passed test.
+################################################################################
+
+
+################################################################################
+# Data sources
+################################################################################
+
 data "aws_kms_alias" "kmskey" {
   name = var.kms_key_alias
 }
 
+
+################################################################################
+# Pipeline
+################################################################################
+
 resource "aws_codepipeline" "main" {
-  name     = "${var.name}-Codepipeline"
+  name          = "${var.name}-Codepipeline"
   pipeline_type = "V2"
-  role_arn = var.pipeline_role_arn
+  role_arn      = var.pipeline_role_arn
 
   artifact_store {
     type     = "S3"
@@ -17,8 +43,10 @@ resource "aws_codepipeline" "main" {
     }
   }
 
+  # V2 webhook trigger: fire on pushes to the main/production branch.
   trigger {
     provider_type = "CodeStarSourceConnection"
+
     git_configuration {
       source_action_name = "Source"
       push {
@@ -29,6 +57,7 @@ resource "aws_codepipeline" "main" {
     }
   }
 
+  # ---- Stage 1: Source ------------------------------------------------------
   stage {
     name = "Source"
 
@@ -48,6 +77,7 @@ resource "aws_codepipeline" "main" {
     }
   }
 
+  # ---- Stage 2: Build -------------------------------------------------------
   stage {
     name = "Build"
 
@@ -66,8 +96,10 @@ resource "aws_codepipeline" "main" {
     }
   }
 
+  # ---- Stage 3: Deploy-Test -------------------------------------------------
   stage {
     name = "Deploy-Test"
+
     action {
       name            = "Deploy"
       category        = "Deploy"
@@ -83,8 +115,10 @@ resource "aws_codepipeline" "main" {
     }
   }
 
+  # ---- Stage 4: Manual approval gate ---------------------------------------
   stage {
     name = "Manual-Approval"
+
     action {
       name      = "Manual-Approval"
       category  = "Approval"
@@ -95,8 +129,10 @@ resource "aws_codepipeline" "main" {
     }
   }
 
+  # ---- Stage 5: Deploy-Prod (same artifact promoted) -----------------------
   stage {
     name = "Deploy-Prod"
+
     action {
       name            = "Deploy"
       category        = "Deploy"

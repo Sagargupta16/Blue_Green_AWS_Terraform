@@ -1,4 +1,12 @@
+################################################################################
+# Root versions.tf
+#
+# Provider and Terraform version pins.
+################################################################################
+
 terraform {
+  required_version = ">= 1.1.0"
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -9,7 +17,6 @@ terraform {
       version = "~> 3.1"
     }
   }
-  required_version = ">= 1.1.0"
 }
 
 provider "aws" {

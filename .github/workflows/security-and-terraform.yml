@@ -1,0 +1,157 @@
+###############################################################################
+# Security & Terraform CI
+#
+# Triggers on every push and pull_request against the main branches.
+#
+# Three jobs run in parallel:
+#   1. terraform-checks  -> terraform fmt + terraform validate for every module
+#   2. ash               -> AWS Automated Security Helper (aggregates bandit,
+#                           checkov, cdk-nag, cfn-nag, detect-secrets, semgrep,
+#                           grype, syft, npm-audit, etc.) via its official
+#                           Docker image
+#   3. checkov           -> direct Checkov scan of the terraform/ tree as a
+#                           fast, always-runnable fallback with a SARIF upload
+#                           to GitHub Code Scanning
+###############################################################################
+
+name: security-and-terraform
+
+on:
+  push:
+    branches: [master, main, "feature/**"]
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  # needed for upload-sarif -> GitHub Code Scanning
+  security-events: write
+  # needed when checkov posts PR comments
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ##############################################################################
+  # 1. Terraform fmt + validate for every module
+  ##############################################################################
+  terraform-checks:
+    name: Terraform fmt & validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.12.2
+
+      - name: terraform fmt (recursive, check only)
+        run: terraform fmt -recursive -check -diff
+        working-directory: terraform
+
+      - name: terraform init (no backend)
+        run: terraform init -backend=false -input=false
+        working-directory: terraform
+
+      - name: terraform validate
+        run: terraform validate -no-color
+        working-directory: terraform
+
+  ##############################################################################
+  # 2. AWS Automated Security Helper (ASH) scan
+  #
+  # Runs the official ASH container against the repository root. ASH executes
+  # every bundled scanner (bandit, checkov, cdk-nag, cfn-nag, detect-secrets,
+  # semgrep, grype, syft, npm-audit) and writes a consolidated report into
+  # ash_output/.
+  #
+  # The job does not fail the build on findings (continue-on-error) so that
+  # contributors get visibility without blocking every PR. Promote to a hard
+  # gate once the existing findings are addressed.
+  ##############################################################################
+  ash:
+    name: AWS Automated Security Helper
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run ASH (Docker)
+        run: |
+          set -euxo pipefail
+          mkdir -p ash_output
+          docker run --rm \
+            -v "${{ github.workspace }}:/src:ro" \
+            -v "${{ github.workspace }}/ash_output:/out" \
+            public.ecr.aws/aws-solutions/automated-security-helper:latest \
+            --source-dir /src \
+            --output-dir /out \
+            --no-color || true
+
+      - name: Upload ASH report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ash-report
+          path: ash_output/
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Summarize ASH findings
+        if: always()
+        run: |
+          echo "## ASH scan summary" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f ash_output/aggregated_results.txt ]; then
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            tail -n 60 ash_output/aggregated_results.txt >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No aggregated_results.txt produced - check the ash-report artifact." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  ##############################################################################
+  # 3. Checkov (standalone, always runs)
+  #
+  # Uses the official bridgecrewio/checkov-action so it works even if the ASH
+  # container is slow to pull. Produces SARIF that's uploaded to GitHub Code
+  # Scanning so findings appear on the Security tab.
+  ##############################################################################
+  checkov:
+    name: Checkov (Terraform)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Checkov
+        id: checkov
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: terraform
+          framework: terraform
+          quiet: true
+          soft_fail: true
+          output_format: cli,sarif
+          output_file_path: console,checkov-results.sarif
+
+      - name: Upload SARIF to GitHub Code Scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: checkov-results.sarif
+          category: checkov
+
+      - name: Upload raw Checkov report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkov-report
+          path: checkov-results.sarif
+          if-no-files-found: ignore
+          retention-days: 30

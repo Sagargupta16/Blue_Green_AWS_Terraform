@@ -1,11 +1,34 @@
+################################################################################
+# CodePipeline (Dev) Module - main.tf
+#
+# Two-stage CI/CD pipeline for the development environment:
+#
+#   Source (GitHub via CodeStar Connection, push trigger on dev_branch_name)
+#     -> Build-Dev (CodeBuild)
+#     -> Deploy-Dev (CodeDeploy blue/green)
+#
+# Pipeline-type V2 is used so the `trigger` block (webhook filter on push
+# events for a specific branch) is supported.
+################################################################################
+
+
+################################################################################
+# Data sources
+################################################################################
+
 data "aws_kms_alias" "kmskey" {
   name = var.kms_key_alias
 }
 
+
+################################################################################
+# Pipeline
+################################################################################
+
 resource "aws_codepipeline" "main" {
-  name     = "${var.name}-Codepipeline"
+  name          = "${var.name}-Codepipeline"
   pipeline_type = "V2"
-  role_arn = var.pipeline_role_arn
+  role_arn      = var.pipeline_role_arn
 
   artifact_store {
     type     = "S3"
@@ -17,8 +40,10 @@ resource "aws_codepipeline" "main" {
     }
   }
 
+  # V2 webhook trigger: fire on pushes to the dev branch.
   trigger {
     provider_type = "CodeStarSourceConnection"
+
     git_configuration {
       source_action_name = "Source"
       push {
@@ -29,6 +54,7 @@ resource "aws_codepipeline" "main" {
     }
   }
 
+  # ---- Stage 1: Source (GitHub) --------------------------------------------
   stage {
     name = "Source"
 
@@ -48,6 +74,7 @@ resource "aws_codepipeline" "main" {
     }
   }
 
+  # ---- Stage 2: Build (CodeBuild) ------------------------------------------
   stage {
     name = "Build-Dev"
 
@@ -66,8 +93,10 @@ resource "aws_codepipeline" "main" {
     }
   }
 
+  # ---- Stage 3: Deploy (CodeDeploy blue/green) -----------------------------
   stage {
     name = "Deploy-Dev"
+
     action {
       name            = "Deploy"
       category        = "Deploy"

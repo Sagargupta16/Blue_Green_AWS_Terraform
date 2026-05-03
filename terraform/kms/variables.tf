@@ -1,10 +1,14 @@
+################################################################################
+# KMS Module - variables.tf
+################################################################################
+
 variable "name" {
-    description = "The name/alias of the KMS key used for encrypting resources across the CI/CD pipeline and infrastructure"
-    type = string
+  description = "Base name used for the KMS key and its alias (alias/<name>-kms-key)."
+  type        = string
 }
 
 variable "tags" {
-    description = "A map of tags to assign to KMS key for resource management and cost tracking"
-    type        = map(string)
-    default     = {}
+  description = "Common tags applied to KMS resources."
+  type        = map(string)
+  default     = {}
 }

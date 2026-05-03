@@ -1,4 +1,36 @@
-# CodeCommit is deprecated - using GitHub instead
+################################################################################
+# Root main.tf
+#
+# Wires every module together. Dependency flow:
+#
+#   s3 + vpc + kms
+#          |
+#          v
+#   ecr   iam
+#     \    |
+#      v   v
+#   task_definition (dev, main)
+#          |
+#          v
+#   codebuild       (dev, main)
+#   codedeploy      (dev, test, prod)   <- builds its own ECS+ALB per env
+#          |
+#          v
+#   codepipeline    (dev, main)         <- orchestrates source/build/deploy
+#
+# Environments:
+#   * dev   - dev branch pipeline, Deploy-Dev
+#   * test  - main branch pipeline, Deploy-Test
+#   * prod  - main branch pipeline, Manual-Approval -> Deploy-Prod
+################################################################################
+
+
+################################################################################
+# Shared foundation (storage, networking, crypto, registry, IAM)
+################################################################################
+
+# Source control is on GitHub via a CodeStar Connection; the CodeCommit
+# module below is intentionally left commented out.
 # module "codecommit" {
 #   source = "./codecommit"
 #   name   = var.project_name
@@ -41,14 +73,17 @@ module "iam" {
 
   s3_bucket_arn           = module.s3.s3_bucket_arn
   kms_key_arn             = module.kms.kms_key_arn
-  # codecommit_repo_arn     = module.codecommit.aws_codecommit_repository_arn
   codebuild_project_names = ["dev-${var.project_name}", "main-${var.project_name}"]
   tags                    = local.common_tags
 
   depends_on = [module.s3, module.ecr]
 }
 
-# Dev Task Definition
+
+################################################################################
+# Task definitions (one per build_env / image tag)
+################################################################################
+
 module "task_definition_dev" {
   source                       = "./task_definition"
   name                         = "dev-${var.project_name}"
@@ -65,7 +100,6 @@ module "task_definition_dev" {
   depends_on = [module.iam]
 }
 
-# Main Task Definition
 module "task_definition_main" {
   source                       = "./task_definition"
   name                         = "main-${var.project_name}"
@@ -82,7 +116,11 @@ module "task_definition_main" {
   depends_on = [module.iam]
 }
 
-# Dev CodeBuild
+
+################################################################################
+# CodeBuild (one per build_env)
+################################################################################
+
 module "codebuild_dev" {
   source              = "./codebuild"
   aws_region          = var.aws_region
@@ -99,7 +137,6 @@ module "codebuild_dev" {
   depends_on = [module.task_definition_dev]
 }
 
-# Test CodeBuild
 module "codebuild_main" {
   source              = "./codebuild"
   aws_region          = var.aws_region
@@ -116,7 +153,11 @@ module "codebuild_main" {
   depends_on = [module.task_definition_main]
 }
 
-# Dev Deploy
+
+################################################################################
+# CodeDeploy (one per environment - each instantiates its own ECS + ALB)
+################################################################################
+
 module "codedeploy_dev" {
   source                 = "./codedeploy"
   name                   = "dev-${var.project_name}"
@@ -140,7 +181,6 @@ module "codedeploy_dev" {
   depends_on = [module.task_definition_dev, module.vpc]
 }
 
-# Test Deploy
 module "codedeploy_test" {
   source                 = "./codedeploy"
   name                   = "test-${var.project_name}"
@@ -164,7 +204,6 @@ module "codedeploy_test" {
   depends_on = [module.task_definition_main, module.vpc]
 }
 
-# Prod Deploy
 module "codedeploy_prod" {
   source                 = "./codedeploy"
   name                   = "prod-${var.project_name}"
@@ -188,7 +227,11 @@ module "codedeploy_prod" {
   depends_on = [module.task_definition_main, module.vpc]
 }
 
-# Dev CodePipeline
+
+################################################################################
+# CodePipelines
+################################################################################
+
 module "codepipeline_dev" {
   source                     = "./codepipeline_dev"
   name                       = "dev-${var.project_name}"
@@ -207,7 +250,6 @@ module "codepipeline_dev" {
   depends_on = [module.codedeploy_dev, module.codebuild_dev]
 }
 
-# Test & Prod CodePipeline
 module "codepipeline_main" {
   source                      = "./codepipeline_main"
   name                        = "main-${var.project_name}"

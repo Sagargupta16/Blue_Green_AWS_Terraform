@@ -1,9 +1,13 @@
+################################################################################
+# S3 Module - outputs.tf
+################################################################################
+
 output "s3_bucket_name" {
-  description = "The name of the s3 bucket"
+  description = "Name of the artifact bucket."
   value       = aws_s3_bucket.artifact_bucket.bucket
 }
 
 output "s3_bucket_arn" {
-  description = "The ARN of the s3 bucket"
+  description = "ARN of the artifact bucket."
   value       = aws_s3_bucket.artifact_bucket.arn
 }

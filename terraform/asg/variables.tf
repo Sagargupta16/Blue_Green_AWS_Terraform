@@ -1,46 +1,79 @@
+################################################################################
+# ASG Module - variables.tf
+################################################################################
+
+
+################################################################################
+# Naming & cluster linkage
+################################################################################
+
 variable "name" {
-    description = "The name of the Auto Scaling Group used for resource identification and tagging"
-    type = string
-}
-variable "asg_ec2_image_id" {
-    description = "The Amazon Machine Image (AMI) ID used to launch EC2 instances in the Auto Scaling Group"
-    type = string
-}
-variable "asg_ec2_instance_type" {
-    description = "The EC2 instance type for Auto Scaling Group instances (e.g., t3.micro, t3.small, m5.large)"
-    type = string
-}
-variable "security_group_ids" {
-    description = "List of security group IDs to attach to the Auto Scaling Group instances for network access control"
-    type = list(string)
-}
-variable "asg_desired_capacity" {
-    description = "The desired number of EC2 instances that should be running in the Auto Scaling Group"
-    type = number
-}
-variable "asg_max_size" {
-    description = "The maximum number of EC2 instances allowed in the Auto Scaling Group"
-    type = number
-}
-variable "asg_min_size" {
-    description = "The minimum number of EC2 instances required in the Auto Scaling Group"
-    type = number
-}
-variable "private_subnets" {
-    description = "List of private subnet IDs where the Auto Scaling Group instances will be deployed"
-    type = list(string)
-}
-variable "ecs_cluster_name" {
-    description = "The name of the ECS cluster that the Auto Scaling Group instances will join"
-    type = string
-}
-variable "ecs_instance_role_name" {
-    description = "The name of the IAM role attached to ECS instances for AWS service permissions"
-    type = string
+  description = "Base name for launch template, ASG, and capacity provider."
+  type        = string
 }
 
+variable "ecs_cluster_name" {
+  description = "Name of the ECS cluster the instances will join."
+  type        = string
+}
+
+variable "ecs_instance_role_name" {
+  description = "Name of the IAM role attached to container-instances via instance profile."
+  type        = string
+}
+
+
+################################################################################
+# EC2 launch-template parameters
+################################################################################
+
+variable "asg_ec2_image_id" {
+  description = "AMI ID for the ECS container-instances (resolved from SSM upstream)."
+  type        = string
+}
+
+variable "asg_ec2_instance_type" {
+  description = "EC2 instance type for container-instances."
+  type        = string
+}
+
+variable "security_group_ids" {
+  description = "Security group IDs attached to launched instances."
+  type        = list(string)
+}
+
+
+################################################################################
+# ASG sizing & placement
+################################################################################
+
+variable "asg_desired_capacity" {
+  description = "Desired number of instances."
+  type        = number
+}
+
+variable "asg_max_size" {
+  description = "Maximum number of instances."
+  type        = number
+}
+
+variable "asg_min_size" {
+  description = "Minimum number of instances."
+  type        = number
+}
+
+variable "private_subnets" {
+  description = "Private subnet IDs the ASG may place instances in."
+  type        = list(string)
+}
+
+
+################################################################################
+# Tagging
+################################################################################
+
 variable "tags" {
-    description = "A map of tags to assign to Auto Scaling Group resources for resource management and cost tracking"
-    type        = map(string)
-    default     = {}
+  description = "Common tags applied to ASG resources."
+  type        = map(string)
+  default     = {}
 }

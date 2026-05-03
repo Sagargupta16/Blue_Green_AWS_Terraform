@@ -1,4 +1,8 @@
+################################################################################
+# CodePipeline (Dev) Module - outputs.tf
+################################################################################
+
 output "pipeline_name" {
-  description = "The name of the codepipeline"
+  description = "Name of the dev CodePipeline."
   value       = aws_codepipeline.main.name
 }

@@ -1,5 +1,11 @@
+################################################################################
+# Root locals.tf
+#
+# Builds the tag set applied to every module by merging the user-supplied
+# common_tags map with project metadata.
+################################################################################
+
 locals {
-  # Common tags merged with project-specific metadata
   common_tags = merge(
     var.common_tags,
     {

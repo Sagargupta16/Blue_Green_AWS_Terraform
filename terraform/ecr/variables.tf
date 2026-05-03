@@ -1,14 +1,19 @@
+################################################################################
+# ECR Module - variables.tf
+################################################################################
+
 variable "name" {
-    description = "The name of the Amazon ECR repository used for storing Docker container images"
-    type = string
+  description = "Name prefix of the ECR repository (<name>-ecr-repo)."
+  type        = string
 }
+
 variable "kms_key_alias" {
-    description = "The alias of the KMS key used for encrypting ECR repository images"
-    type = string
+  description = "Alias of the KMS key used to encrypt ECR images at rest."
+  type        = string
 }
 
 variable "tags" {
-    description = "A map of tags to assign to ECR repository for resource management and cost tracking"
-    type        = map(string)
-    default     = {}
+  description = "Common tags applied to the ECR repository."
+  type        = map(string)
+  default     = {}
 }

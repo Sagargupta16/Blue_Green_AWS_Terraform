@@ -1,10 +1,14 @@
+################################################################################
+# CodeCommit Module - variables.tf  (DEPRECATED - kept for historical reference)
+################################################################################
+
 variable "name" {
-    description = "The name of the CodeCommit repository that will store the application source code"
-    type = string
+  description = "Base name for the (unused) CodeCommit repository."
+  type        = string
 }
 
 variable "tags" {
-    description = "A map of tags to assign to CodeCommit repository for resource management and cost tracking"
-    type        = map(string)
-    default     = {}
+  description = "Tags for the (unused) CodeCommit repository."
+  type        = map(string)
+  default     = {}
 }

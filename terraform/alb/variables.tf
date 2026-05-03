@@ -1,25 +1,29 @@
+################################################################################
+# ALB Module - variables.tf
+################################################################################
+
 variable "vpc_id" {
-    description = "The ID of the VPC where the Application Load Balancer will be deployed"
-    type = string
+  description = "ID of the VPC where the ALB is deployed."
+  type        = string
 }
 
 variable "name" {
-    description = "The name of the Application Load Balancer used for resource identification"
-    type = string
+  description = "Base name for the ALB and its target groups."
+  type        = string
 }
 
 variable "subnets" {
-    description = "List of subnet IDs where the Application Load Balancer will be deployed across multiple AZs"
-    type = list(string)
+  description = "Public subnet IDs (at least two AZs) where the ALB is placed."
+  type        = list(string)
 }
 
 variable "security_group_ids" {
-    description = "List of security group IDs to attach to the Application Load Balancer for network access control"
-    type = list(string)
+  description = "Security group IDs attached to the ALB."
+  type        = list(string)
 }
 
 variable "tags" {
-    description = "A map of tags to assign to Application Load Balancer resources for resource management and cost tracking"
-    type        = map(string)
-    default     = {}
+  description = "Common tags applied to ALB resources."
+  type        = map(string)
+  default     = {}
 }

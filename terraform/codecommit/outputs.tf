@@ -1,9 +1,13 @@
+################################################################################
+# CodeCommit Module - outputs.tf  (DEPRECATED - kept for historical reference)
+################################################################################
+
 output "aws_codecommit_repository_name" {
-  description = "The name of the codecommit repository"
+  description = "Name of the (unused) CodeCommit repository."
   value       = aws_codecommit_repository.repo.repository_name
 }
 
 output "aws_codecommit_repository_arn" {
-  description = "The ARN of the codecommit repository"
+  description = "ARN of the (unused) CodeCommit repository."
   value       = aws_codecommit_repository.repo.arn
 }

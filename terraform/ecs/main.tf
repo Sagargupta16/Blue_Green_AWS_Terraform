@@ -1,28 +1,50 @@
+################################################################################
+# ECS Module - main.tf
+#
+# Builds a full ECS-on-EC2 environment:
+#
+#   * security-groups    (nested module) -> ALB & ECS SGs
+#   * alb                (nested module) -> internet-facing ALB + 2 TGs + 2
+#                                           listeners (ports 80 / 8080)
+#   * aws_ecs_cluster    (this file)     -> cluster with ContainerInsights
+#   * asg                (nested module) -> launch template + ASG + capacity
+#                                           provider tied to the cluster
+#   * aws_ecs_service    (this file)     -> deployment-controller = CODE_DEPLOY
+#   * aws_cloudwatch_metric_alarm (this file) -> high CPU alarm
+#
+# The service uses `ignore_changes = [task_definition, desired_count,
+# load_balancer]` so Terraform never fights CodeDeploy during a release.
+################################################################################
+
+
+################################################################################
+# Data sources
+################################################################################
+
+# SSM Parameter Store lookup for the current ECS-optimized AMI ID.
+data "aws_ssm_parameter" "ecs_node_ami" {
+  name = var.asg_ec2_ami_name
+}
+
+
+################################################################################
+# Nested modules (security-groups, ALB, ASG)
+################################################################################
+
 module "security-groups" {
   source = "../security-groups"
   name   = var.name
   vpc_id = var.vpc_id
 }
+
 module "alb" {
   source             = "../alb"
   name               = var.name
   security_group_ids = [module.security-groups.alb_security_group_id]
   subnets            = var.public_subnets
   vpc_id             = var.vpc_id
-  depends_on = [ module.security-groups ]
-}
 
-resource "aws_ecs_cluster" "cluster" {
-  name = "${var.name}-cluster"
-
-  setting {
-    name  = "containerInsights"
-    value = "enabled"
-  }
-}
-
-data "aws_ssm_parameter" "ecs_node_ami" {
-  name = var.asg_ec2_ami_name
+  depends_on = [module.security-groups]
 }
 
 module "asg" {
@@ -40,6 +62,25 @@ module "asg" {
 
   depends_on = [aws_ecs_cluster.cluster]
 }
+
+
+################################################################################
+# ECS cluster
+################################################################################
+
+resource "aws_ecs_cluster" "cluster" {
+  name = "${var.name}-cluster"
+
+  setting {
+    name  = "containerInsights"
+    value = "enabled"
+  }
+}
+
+
+################################################################################
+# ECS service (CODE_DEPLOY controller)
+################################################################################
 
 resource "aws_ecs_service" "my_ecs_service" {
   name                = "${var.name}-service"
@@ -65,7 +106,7 @@ resource "aws_ecs_service" "my_ecs_service" {
     type = "CODE_DEPLOY"
   }
 
-  # Ignore changes to task_definition since CodeDeploy will manage updates
+  # CodeDeploy owns runtime updates; Terraform must not fight it.
   lifecycle {
     ignore_changes = [
       task_definition,
@@ -77,22 +118,32 @@ resource "aws_ecs_service" "my_ecs_service" {
   depends_on = [module.alb, aws_ecs_cluster.cluster]
 }
 
+
+################################################################################
+# Monitoring
+################################################################################
+
+# High CPU reservation alarm on the cluster. NOTE: `alarm_actions` is empty -
+# findings currently surface only in the CloudWatch console. Wire an SNS topic
+# or an ASG scaling policy here to make the alarm actionable.
 resource "aws_cloudwatch_metric_alarm" "ecs-alert_High-CPUReservation" {
-  alarm_name = "${var.name}-CPU_Utilization_High"
+  alarm_name          = "${var.name}-CPU_Utilization_High"
   comparison_operator = "GreaterThanOrEqualToThreshold"
-  period = "60"
-  evaluation_periods = "1"
+  period              = "60"
+  evaluation_periods  = "1"
   datapoints_to_alarm = 1
-  statistic = "Average"
-  threshold = "60"
-  alarm_description = ""
-  metric_name = "CPUReservation"
-  namespace = "AWS/ECS"
+  statistic           = "Average"
+  threshold           = "60"
+  alarm_description   = "ECS cluster CPUReservation >= 60% over 1 minute."
+  metric_name         = "CPUReservation"
+  namespace           = "AWS/ECS"
+
   dimensions = {
-    ClusterName = "${aws_ecs_cluster.cluster.name}"
+    ClusterName = aws_ecs_cluster.cluster.name
   }
-  actions_enabled = true
+
+  actions_enabled           = true
   insufficient_data_actions = []
-  ok_actions = []
-  alarm_actions = []
+  ok_actions                = []
+  alarm_actions             = []
 }

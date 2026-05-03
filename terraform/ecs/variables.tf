@@ -1,66 +1,109 @@
+################################################################################
+# ECS Module - variables.tf
+################################################################################
+
+
+################################################################################
+# Naming & networking
+################################################################################
+
 variable "name" {
-    description = "The name of the ECS cluster that will host the containerized application"
-    type = string
-}
-variable "vpc_id" {
-    description = "The ID of the VPC where the ECS cluster and related resources will be deployed"
-    type = string
-}
-variable "public_subnets" {
-    description = "List of public subnet IDs where load balancers and public-facing ECS resources are deployed"
-    type = list(string)
-}
-variable "asg_ec2_ami_name" {
-    description = "The name of the Amazon Machine Image (AMI) used for ECS container instances"
-    type = string
-}
-variable "asg_ec2_instance_type" {
-    description = "The EC2 instance type for ECS container instances in the cluster"
-    type = string
-}
-variable "asg_desired_capacity" {
-    description = "The desired number of ECS container instances in the Auto Scaling Group"
-    type = number
-}
-variable "asg_max_size" {
-    description = "The maximum number of ECS container instances allowed in the Auto Scaling Group"
-    type = number
-}
-variable "asg_min_size" {
-    description = "The minimum number of ECS container instances required in the Auto Scaling Group"
-    type = number
-}
-variable "desired_count" {
-    description = "The desired number of running tasks for the ECS service"
-    type = number
-}
-variable "container_name" {
-    description = "The name of the application container defined in the ECS task definition"
-    type = string
-}
-variable "container_port" {
-    description = "The port number on which the application container listens for incoming traffic"
-    type = number
-}
-variable "private_subnets" {
-    description = "List of private subnet IDs where ECS container instances and internal resources are deployed"
-    type = list(string)
-}
-variable "task_definition_arn" {
-    description = "The ARN of the ECS task definition that defines the containerized application"
-    type = string
-}
-variable "ecs_instance_role_name" {
-    description = "The name of the IAM role attached to ECS container instances for AWS service access"
-    type = string
-}
-variable "s3_bucket_name" {
-    description = "The name of the S3 bucket used for storing ECS-related artifacts and logs"
-    type = string
+  description = "Base name used for the ECS cluster, service, ALB, and ASG."
+  type        = string
 }
 
+variable "vpc_id" {
+  description = "ID of the VPC where ECS resources are deployed."
+  type        = string
+}
+
+variable "public_subnets" {
+  description = "Public subnet IDs where the ALB is placed."
+  type        = list(string)
+}
+
+variable "private_subnets" {
+  description = "Private subnet IDs where container-instances and tasks run."
+  type        = list(string)
+}
+
+
+################################################################################
+# ASG / EC2 capacity
+################################################################################
+
+variable "asg_ec2_ami_name" {
+  description = "SSM parameter name for the ECS-optimized AMI (e.g. /aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id)."
+  type        = string
+}
+
+variable "asg_ec2_instance_type" {
+  description = "EC2 instance type for ECS container-instances."
+  type        = string
+}
+
+variable "asg_desired_capacity" {
+  description = "Desired number of EC2 container-instances."
+  type        = number
+}
+
+variable "asg_max_size" {
+  description = "Maximum number of EC2 container-instances."
+  type        = number
+}
+
+variable "asg_min_size" {
+  description = "Minimum number of EC2 container-instances."
+  type        = number
+}
+
+
+################################################################################
+# ECS service / task
+################################################################################
+
+variable "desired_count" {
+  description = "Desired number of running ECS tasks."
+  type        = number
+}
+
+variable "container_name" {
+  description = "Name of the application container in the task definition."
+  type        = string
+}
+
+variable "container_port" {
+  description = "Port the application container listens on."
+  type        = number
+}
+
+variable "task_definition_arn" {
+  description = "ARN of the ECS task definition the service runs."
+  type        = string
+}
+
+
+################################################################################
+# External identities & shared buckets
+################################################################################
+
+variable "ecs_instance_role_name" {
+  description = "Name of the IAM role attached to container-instances via instance profile."
+  type        = string
+}
+
+variable "s3_bucket_name" {
+  description = "Artifact bucket name (passed through for parity with codedeploy module)."
+  type        = string
+}
+
+
+################################################################################
+# Tagging
+################################################################################
+
 variable "tags" {
-    description = "A map of tags to assign to ECS cluster and service resources for resource management and cost tracking"
-    type        = map(string)
-    default     = {}
+  description = "Common tags applied to ECS resources."
+  type        = map(string)
+  default     = {}
 }
