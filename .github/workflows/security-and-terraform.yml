@@ -115,13 +115,12 @@ jobs:
           quiet: true
           soft_fail: true
           output_format: sarif
-          output_file_path: checkov-results.sarif
 
       - name: Upload SARIF to GitHub Code Scanning
         if: always()
         uses: github/codeql-action/upload-sarif@0daab03d71ff584ef619d027a3fd9146679c5d84 # v3
         with:
-          sarif_file: checkov-results.sarif
+          sarif_file: results.sarif
           category: checkov
 
       - name: Upload raw Checkov report
@@ -129,6 +128,6 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: checkov-report
-          path: checkov-results.sarif
+          path: results.sarif
           if-no-files-found: ignore
           retention-days: 30
