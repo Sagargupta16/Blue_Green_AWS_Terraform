@@ -114,8 +114,8 @@ jobs:
           framework: terraform
           quiet: true
           soft_fail: true
-          output_format: cli,sarif
-          output_file_path: console,checkov-results.sarif
+          output_format: sarif
+          output_file_path: checkov-results.sarif
 
       - name: Upload SARIF to GitHub Code Scanning
         if: always()
