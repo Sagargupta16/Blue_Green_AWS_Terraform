@@ -1,0 +1,13 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  terraform:
+    uses: Sagargupta16/shared-workflows/.github/workflows/terraform-ci.yml@main
+    with:
+      working-directory: terraform
+    permissions:
+      contents: read
+      security-events: write
