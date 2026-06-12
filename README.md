@@ -26,7 +26,7 @@ Infrastructure-as-Code for a multi-environment Blue/Green deployment pipeline on
 - ✅ **Consistent tagging** via `provider.default_tags` — no per-resource `tags =` plumbing
 - ✅ **IMDSv2 enforced** on EC2 container-instances
 - ✅ **X-Ray distributed tracing** (daemon sidecar + SDK middleware)
-- ✅ **CI-side security scanning** — GitHub Actions workflow runs ASH (Automated Security Helper) + Checkov + `terraform fmt/validate` on every PR
+- ✅ **CI-side security scanning** — GitHub Actions workflow runs Checkov + `terraform fmt/validate` on every PR
 - ✅ **Dependency hygiene** — Renovate monthly grouped updates, SonarCloud connected mode
 
 ## 📋 Prerequisites
@@ -122,7 +122,7 @@ The app is available at <http://localhost:3000>.
 │   ├── iam/                      # All IAM roles & inline policies
 │   ├── kms/                      # Pipeline KMS CMK + alias
 │   ├── s3/                       # Artifact bucket
-│   └── codecommit/               # Deprecated (GitHub replaced CodeCommit in v1.0.1)
+│   └── codecommit/               # Deprecated (GitHub source replaced CodeCommit)
 ├── Test_App/                     # Express + React reference application
 │   ├── buildspec.yml             # CodeBuild spec (alternate — the repo-root one is the active one)
 │   ├── Dockerfile                # Multi-stage (client builder → server)
@@ -131,14 +131,11 @@ The app is available at <http://localhost:3000>.
 │   ├── client/                   # React (Create React App) frontend
 │   └── tests/                    # Jest + Supertest
 ├── .github/
-│   ├── workflows/
-│   │   └── security-and-terraform.yml   # ASH + Checkov + terraform fmt/validate
-│   ├── CODEOWNERS
-│   └── pull_request_template.md
+│   └── workflows/
+│       └── ci.yml                # Checkov + terraform fmt/validate (shared workflow)
 ├── buildspec.yml                 # Active CodeBuild spec (referenced by CodeBuild projects)
 ├── renovate.json                 # Monthly grouped dep updates
 ├── CHANGELOG.md
-├── SECURITY.md
 └── README.md
 ```
 
@@ -213,10 +210,9 @@ yarn test --coverage  # coverage report (CodeBuild gates on ≥ 80 %)
 - **KMS key rotation** enabled on the pipeline CMK.
 - **ECR image scanning** on push.
 - **ALB** — deletion protection, invalid-header drop.
-- **CI security scanning** — every push and PR runs:
+- **CI security scanning** — every push to `main` and every PR runs:
   - `terraform fmt -check -recursive` + `terraform validate`
-  - AWS ASH (Automated Security Helper) — Docker image, aggregates Bandit, Checkov, cdk-nag, cfn-nag, detect-secrets, Semgrep, grype, syft, npm-audit
-  - Checkov standalone — SARIF output uploaded to GitHub Code Scanning
+  - Checkov — SARIF output uploaded to GitHub Code Scanning
 
 ## 🚨 Troubleshooting
 
