@@ -14,8 +14,8 @@
   "license": "ISC",
   "dependencies": {
     "aws-xray-sdk": "^3.9.0",
-    "concurrently": "^9.0.0",
-    "express": "^4.19.2"
+    "concurrently": "^10.0.0",
+    "express": "^5.0.0"
   },
   "devDependencies": {
     "jest": "^30.0.0",
