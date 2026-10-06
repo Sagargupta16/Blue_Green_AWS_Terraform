@@ -20,5 +20,8 @@
   "devDependencies": {
     "jest": "^30.0.0",
     "supertest": "^7.0.0"
+  },
+  "resolutions": {
+    "proxy-addr": "^2.0.8"
   }
 }

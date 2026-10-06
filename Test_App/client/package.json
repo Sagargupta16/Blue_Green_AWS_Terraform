@@ -18,9 +18,11 @@
     "**/http-proxy-agent/@tootallnate/once": "^2.0.1",
     "qs": "^6.16.0",
     "**/resolve-url-loader/postcss": "^8.5.23",
+    "postcss-selector-parser": "^7.1.6",
     "serialize-javascript": "^7.0.5",
     "**/sockjs/uuid": "^11.1.1",
-    "underscore": "^1.13.8"
+    "underscore": "^1.13.8",
+    "**/webpack-dev-server/webpack-dev-middleware": "^7.4.6"
   },
   "scripts": {
     "start": "react-scripts start",
