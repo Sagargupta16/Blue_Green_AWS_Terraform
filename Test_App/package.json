@@ -22,6 +22,8 @@
     "supertest": "^7.0.0"
   },
   "resolutions": {
-    "proxy-addr": "^2.0.8"
+    "proxy-addr": "^2.0.8",
+    "**/js-yaml/argparse": "^2.0.1",
+    "shell-quote": "^1.11.0"
   }
 }

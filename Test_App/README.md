@@ -77,12 +77,12 @@ Test_App/
 ├── package.json           # Backend dependencies
 ├── client/                # React frontend
 │   ├── package.json       # Frontend dependencies
-│   ├── public/
-│   │   └── index.html      # HTML template
+│   ├── index.html         # HTML template (Vite entry)
+│   ├── vite.config.js     # Vite config: relative base, output to build/
 │   └── src/
 │       ├── App.jsx         # Main React component
 │       ├── App.css         # Application styles
-│       ├── index.js        # React entry point
+│       ├── index.jsx       # React entry point
 │       └── index.css       # Global styles
 └── tests/
     └── index.test.js       # Test files
