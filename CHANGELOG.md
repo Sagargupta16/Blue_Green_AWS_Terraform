@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.3.0] - 2026-10-13
+
+### Changed
+- Test_App client moved from Create React App (react-scripts 5) to Vite 8. Output stays in `client/build`, so `index.js`, the Dockerfile and buildspec are unchanged; the CRA `resolutions` block and boilerplate README are gone.
+
+### Security
+- Clears all 10 open Dependabot alerts: 9 came only through react-scripts (webpack-dev-server x6, braces, node-forge, sprintf-js); the server-side sprintf-js (jest -> js-yaml 3 -> argparse 1) is cut by resolving js-yaml's argparse to 2.0.1, which only its CLI uses.
+- Resolve shell-quote to ^1.11.0 for a critical advisory published 2026-10-13 (via concurrently). `yarn audit` reports 0 in both Test_App and client.
+
 ## [1.2.0] - 2026-05-03
 
 ### Security / IAM

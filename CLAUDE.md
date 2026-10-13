@@ -16,7 +16,7 @@ Portfolio/demo repo by @Sagargupta16. No hosted URL; deploys into an AWS account
 
 ## Stack
 
-- **Language**: HCL (Terraform >= 1.1.0, AWS provider ~> 6.0) + Node.js (Express) + React (CRA) for the reference app
+- **Language**: HCL (Terraform >= 1.1.0, AWS provider ~> 6.0) + Node.js (Express) + React on Vite 8 for the reference app
 - **Framework**: hand-rolled Terraform modules (no registry modules); Express 4 backend with X-Ray SDK
 - **Database**: none
 - **Package manager**: Yarn (Test_App only)

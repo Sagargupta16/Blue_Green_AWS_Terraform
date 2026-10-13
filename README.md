@@ -128,7 +128,7 @@ The app is available at <http://localhost:3000>.
 │   ├── Dockerfile                # Multi-stage (client builder → server)
 │   ├── index.js                  # Express backend with X-Ray SDK
 │   ├── package.json
-│   ├── client/                   # React (Create React App) frontend
+│   ├── client/                   # React frontend (Vite)
 │   └── tests/                    # Jest + Supertest
 ├── .github/
 │   └── workflows/
