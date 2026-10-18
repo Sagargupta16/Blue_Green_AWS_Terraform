@@ -17,3 +17,9 @@ variable "security_group_ids" {
   description = "Security group IDs attached to the ALB."
   type        = list(string)
 }
+
+variable "create_listener_rules" {
+  description = "Create the weighted listener rules ECS native blue/green shifts traffic on."
+  type        = bool
+  default     = false
+}

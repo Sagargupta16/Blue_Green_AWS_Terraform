@@ -77,3 +77,50 @@ variable "s3_bucket_name" {
   description = "Shared artifact bucket name."
   type        = string
 }
+
+variable "kms_key_arn" {
+  description = "KMS CMK ARN that encrypts the alarm SNS topic."
+  type        = string
+}
+
+variable "alarm_email" {
+  description = "Email subscribed to the alarm topic; empty for none."
+  type        = string
+  default     = ""
+}
+
+variable "deployment_engine" {
+  description = "codedeploy or ecs (see the root variable)."
+  type        = string
+  default     = "codedeploy"
+}
+
+variable "ecs_deployment_strategy" {
+  description = "ECS native strategy: CANARY or BLUE_GREEN."
+  type        = string
+  default     = "CANARY"
+}
+
+variable "canary_percent" {
+  description = "Share of production traffic the new version gets first."
+  type        = number
+  default     = 30
+}
+
+variable "canary_interval_minutes" {
+  description = "Minutes the canary share runs before the full shift."
+  type        = number
+  default     = 1
+}
+
+variable "bake_time_minutes" {
+  description = "Minutes blue stays up after the full shift."
+  type        = number
+  default     = 1
+}
+
+variable "ecs_infrastructure_role_arn" {
+  description = "Role ECS assumes to rewrite listener rules (ecs engine only)."
+  type        = string
+  default     = null
+}

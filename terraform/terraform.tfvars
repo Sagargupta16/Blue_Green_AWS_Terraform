@@ -24,10 +24,17 @@ asg_min_size          = 2
 desired_count  = 2
 container_port = 3000
 
-# GitHub Configuration (replacing CodeCommit)
+# GitHub Configuration (CodeConnections; the codestar-connections ARN prefix still works)
 github_connection_arn = "arn:aws:codestar-connections:us-east-1:822546254290:connection/9bfb5e94-5865-47b9-9f0a-bf9d9f0ed56e"
 github_owner          = "Sagargupta16"
 github_repo           = "Blue_Green_AWS_Terraform"
+
+# Deployment engine: "codedeploy" (default) or "ecs" for ECS native blue/green
+deployment_engine       = "codedeploy"
+ecs_deployment_strategy = "CANARY"
+canary_percent          = 30
+canary_interval_minutes = 1
+bake_time_minutes       = 1
 
 # Branch Configuration
 main_branch_name = "master"

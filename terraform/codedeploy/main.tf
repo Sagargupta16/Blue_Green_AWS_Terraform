@@ -17,25 +17,62 @@ module "ecs" {
   ecs_instance_role_name = var.ecs_instance_role_name
   task_definition_arn    = var.task_definition_arn
   s3_bucket_name         = var.s3_bucket_name
+  kms_key_arn            = var.kms_key_arn
+  alarm_email            = var.alarm_email
+
+  deployment_engine           = var.deployment_engine
+  ecs_deployment_strategy     = var.ecs_deployment_strategy
+  canary_percent              = var.canary_percent
+  canary_interval_minutes     = var.canary_interval_minutes
+  bake_time_minutes           = var.bake_time_minutes
+  ecs_infrastructure_role_arn = var.ecs_infrastructure_role_arn
+}
+
+
+# CodeDeploy is only created for deployment_engine = "codedeploy". With
+# "ecs" the service runs native blue/green and these resources go away.
+
+locals {
+  codedeploy = var.deployment_engine == "codedeploy" ? 1 : 0
+}
+
+# Addresses gained [0] when count was added; keep existing state.
+moved {
+  from = aws_codedeploy_app.my_codedeploy_app
+  to   = aws_codedeploy_app.my_codedeploy_app[0]
+}
+
+moved {
+  from = aws_codedeploy_deployment_config.custom_bluegreen_config
+  to   = aws_codedeploy_deployment_config.custom_bluegreen_config[0]
+}
+
+moved {
+  from = aws_codedeploy_deployment_group.example
+  to   = aws_codedeploy_deployment_group.example[0]
 }
 
 
 # CodeDeploy application & deployment config
 
 resource "aws_codedeploy_app" "my_codedeploy_app" {
+  count = local.codedeploy
+
   name             = "${var.name}-app"
   compute_platform = "ECS"
 }
 
 resource "aws_codedeploy_deployment_config" "custom_bluegreen_config" {
+  count = local.codedeploy
+
   compute_platform       = "ECS"
   deployment_config_name = "${var.name}-bluegreen-config"
 
   traffic_routing_config {
     type = "TimeBasedCanary"
     time_based_canary {
-      interval   = 1
-      percentage = 30
+      interval   = var.canary_interval_minutes
+      percentage = var.canary_percent
     }
   }
 }
@@ -44,14 +81,23 @@ resource "aws_codedeploy_deployment_config" "custom_bluegreen_config" {
 # Deployment group (blue/green)
 
 resource "aws_codedeploy_deployment_group" "example" {
-  app_name               = aws_codedeploy_app.my_codedeploy_app.name
-  deployment_config_name = aws_codedeploy_deployment_config.custom_bluegreen_config.deployment_config_name
+  count = local.codedeploy
+
+  app_name               = aws_codedeploy_app.my_codedeploy_app[0].name
+  deployment_config_name = aws_codedeploy_deployment_config.custom_bluegreen_config[0].deployment_config_name
   deployment_group_name  = "${var.name}-deploy-grp"
   service_role_arn       = var.app_task_role_arn
 
   auto_rollback_configuration {
     enabled = true
-    events  = ["DEPLOYMENT_FAILURE"]
+    events  = ["DEPLOYMENT_FAILURE", "DEPLOYMENT_STOP_ON_ALARM"]
+  }
+
+  # A 5xx spike or an unhealthy target during the canary stops the
+  # deployment, and DEPLOYMENT_STOP_ON_ALARM above sends traffic back to blue.
+  alarm_configuration {
+    enabled = true
+    alarms  = module.ecs.rollback_alarm_names
   }
 
   blue_green_deployment_config {
@@ -62,7 +108,7 @@ resource "aws_codedeploy_deployment_group" "example" {
 
     terminate_blue_instances_on_deployment_success {
       action                           = "TERMINATE"
-      termination_wait_time_in_minutes = 1
+      termination_wait_time_in_minutes = var.bake_time_minutes
     }
   }
 

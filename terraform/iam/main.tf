@@ -8,6 +8,16 @@ locals {
     for p in var.codebuild_project_names :
     "arn:aws:codebuild:${var.region}:${var.account_id}:project/${p}-CodeBuild"
   ]
+
+  ecs_native = var.deployment_engine == "ecs"
+
+  # The ECS standard deploy action (ecs engine) calls UpdateService itself;
+  # with CodeDeploy, CodeDeploy's own role does that.
+  pipeline_ecs_service_statements = local.ecs_native ? [{
+    Effect   = "Allow"
+    Action   = ["ecs:DescribeServices", "ecs:UpdateService"]
+    Resource = "arn:aws:ecs:${var.region}:${var.account_id}:service/*-${var.name}-cluster/*"
+  }] : []
 }
 
 
@@ -160,6 +170,13 @@ resource "aws_iam_role_policy" "codebuild_inline" {
         Resource = "*"
       },
       {
+        # buildspec.yml reads the Terraform-registered task definition to
+        # render taskdef.json (DescribeTaskDefinition has no resource scope)
+        Effect   = "Allow"
+        Action   = ["ecs:DescribeTaskDefinition"]
+        Resource = "*"
+      },
+      {
         Effect = "Allow"
         Action = [
           "ecr:InitiateLayerUpload",
@@ -283,11 +300,13 @@ resource "aws_iam_role_policy" "codepipeline_inline" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
+    Statement = concat([
       {
+        # CodeStar Connections is now CodeConnections; existing
+        # codestar-connections ARNs keep working and both prefixes are accepted
         Effect   = "Allow"
-        Action   = ["codestar-connections:UseConnection"]
-        Resource = "*"
+        Action   = ["codeconnections:UseConnection", "codestar-connections:UseConnection"]
+        Resource = var.github_connection_arn
       },
       {
         Effect = "Allow"
@@ -350,15 +369,63 @@ resource "aws_iam_role_policy" "codepipeline_inline" {
         }
       },
       {
+        # Both deploy actions register a new task-definition revision per
+        # build (pinned to the image digest), which passes both task roles
         Effect   = "Allow"
-        Action   = ["iam:PassRole"]
-        Resource = aws_iam_role.ecs_task_execution_role.arn
+        Action   = ["ecs:RegisterTaskDefinition", "ecs:DescribeTaskDefinition"]
+        Resource = "*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["ecs:TagResource"]
+        Resource = "arn:aws:ecs:${var.region}:${var.account_id}:task-definition/*"
         Condition = {
           StringEquals = {
-            "iam:PassedToService" = "ecs-tasks.amazonaws.com"
+            "ecs:CreateAction" = "RegisterTaskDefinition"
+          }
+        }
+      },
+      {
+        Effect = "Allow"
+        Action = ["iam:PassRole"]
+        Resource = [
+          aws_iam_role.ecs_task_execution_role.arn,
+          aws_iam_role.ecs_task_role.arn
+        ]
+        Condition = {
+          StringEquals = {
+            "iam:PassedToService" = ["ecs.amazonaws.com", "ecs-tasks.amazonaws.com"]
           }
         }
       }
-    ]
+    ], local.pipeline_ecs_service_statements)
   })
+}
+
+
+# ECS infrastructure role (ECS native blue/green only)
+#
+# ECS assumes this role to rewrite the listener-rule weights during a native
+# blue/green or canary deployment.
+
+resource "aws_iam_role" "ecs_infrastructure_role" {
+  count = local.ecs_native ? 1 : 0
+
+  name = "${var.name}-EcsInfrastructureRole"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "ecs.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_infrastructure_lb" {
+  count = local.ecs_native ? 1 : 0
+
+  role       = aws_iam_role.ecs_infrastructure_role[0].name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonECSInfrastructureRolePolicyForLoadBalancers"
 }

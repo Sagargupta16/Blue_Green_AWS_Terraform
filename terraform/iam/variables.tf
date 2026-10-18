@@ -28,3 +28,14 @@ variable "codebuild_project_names" {
   type        = list(string)
   default     = []
 }
+
+variable "github_connection_arn" {
+  description = "CodeConnections (formerly CodeStar Connections) ARN the pipeline may use."
+  type        = string
+}
+
+variable "deployment_engine" {
+  description = "codedeploy or ecs; ecs adds the infrastructure role and UpdateService."
+  type        = string
+  default     = "codedeploy"
+}
