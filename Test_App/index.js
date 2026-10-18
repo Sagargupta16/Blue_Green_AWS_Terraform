@@ -1,10 +1,10 @@
 const express = require("express");
 const app = express();
 app.disable("x-powered-by");
-var AWSXRay = require("aws-xray-sdk");
+const AWSXRay = require("aws-xray-sdk");
 app.use(AWSXRay.express.openSegment("Green Blue Deployment Test App"));
 AWSXRay.config([AWSXRay.plugins.ECSPlugin]);
-var http = AWSXRay.captureHTTPs(require("http"));
+const http = AWSXRay.captureHTTPs(require("node:http"));
 
 // Serve static files from the React build directory
 app.use(express.static("client/build"));
@@ -30,7 +30,12 @@ app.get("/api/data", (req, res) => {
 // Close the X-Ray segment
 app.use(AWSXRay.express.closeSegment());
 
-// Start the server
-app.listen(3000, () => {
-  console.log("listening on 3000");
-});
+// Start the server only when run directly, so tests can import the app
+if (require.main === module) {
+  const port = process.env.PORT || 3000;
+  app.listen(port, () => {
+    console.log(`listening on ${port}`);
+  });
+}
+
+module.exports = app;
