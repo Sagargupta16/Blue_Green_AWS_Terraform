@@ -4,7 +4,7 @@ FROM --platform=linux/amd64 public.ecr.aws/docker/library/node:24-alpine AS clie
 WORKDIR /app/client
 
 COPY client/package.json client/yarn.lock ./
-RUN yarn install
+RUN yarn install --frozen-lockfile --ignore-scripts
 
 COPY client/ .
 RUN yarn build
@@ -15,7 +15,7 @@ FROM --platform=linux/amd64 public.ecr.aws/docker/library/node:24-alpine AS serv
 WORKDIR /app
 
 COPY package.json yarn.lock ./
-RUN yarn install
+RUN yarn install --frozen-lockfile --ignore-scripts
 
 COPY . .
 COPY --from=client-builder /app/client/build ./client/build

@@ -21,6 +21,16 @@
     "jest": "^30.0.0",
     "supertest": "^7.0.0"
   },
+  "jest": {
+    "collectCoverageFrom": [
+      "index.js"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "lines": 80
+      }
+    }
+  },
   "resolutions": {
     "proxy-addr": "^2.0.8",
     "**/js-yaml/argparse": "^2.0.1",

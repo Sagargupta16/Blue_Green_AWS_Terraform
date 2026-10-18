@@ -41,7 +41,7 @@ resource "aws_ecs_task_definition" "task_def" {
     },
     {
       name      = "xray-daemon"
-      image     = "amazon/aws-xray-daemon"
+      image     = "public.ecr.aws/xray/aws-xray-daemon:latest"
       cpu       = 0
       essential = false
       portMappings = [

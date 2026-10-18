@@ -13,7 +13,7 @@ This is a sample Node.js/React application used to demonstrate the Blue-Green de
 
 ### Prerequisites
 
-- Node.js >= 14.x
+- Node.js 20.19+ or 22.12+ (Vite 8 needs it; the Dockerfile and `.nvmrc` use Node 24)
 - Yarn package manager
 - Docker (for containerization)
 
@@ -98,10 +98,10 @@ This application is designed to work with AWS CodePipeline:
 
 ## 🧪 Features
 
-- Health check endpoint (`/health`)
+- `GET /` serves the React build (the ALB health check target); `GET /api/hello`, `/api/goodbye`, `/api/data` return JSON
 - AWS X-Ray integration for distributed tracing
 - Concurrent frontend and backend development
-- Automated testing with Jest
+- Automated testing with Jest + Supertest against the real `index.js`, with an 80% line-coverage threshold that fails the build
 - Docker containerization
 - Production-ready build process
 

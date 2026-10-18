@@ -36,13 +36,8 @@ phases:
       - docker tag $REPOSITORY_URI:$build_env-latest $REPOSITORY_URI:$build_env-$IMAGE_TAG
       - echo Running tests...
       - yarn install
+      # Fails the build below 80% line coverage (coverageThreshold in package.json)
       - yarn test --coverage
-      - |
-        COVERAGE=$(yarn test --coverage | grep -Po 'All files.*? \K\d+(?=%)')
-        if [ "$COVERAGE" -lt 80 ]; then
-          echo "Test coverage is below 80%. Build failed."
-          exit 1
-        fi
   post_build:
     commands:
       - echo Build completed on `date`

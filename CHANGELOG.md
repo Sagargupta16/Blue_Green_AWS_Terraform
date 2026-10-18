@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.3.1] - 2026-10-18
+
+### Fixed
+- Launch-template user data used `<<EOF` with an indented body, so the script started with four spaces before `#!/bin/bash` and cloud-init could not exec it ("Exec format error"); `ECS_CLUSTER` was never written and instances would join the `default` cluster. Now `<<-EOF`, which strips the indent.
+- The CodeBuild 80% coverage gate never fired: Jest prints coverage without a `%` sign, so the `grep -Po '...(?=%)'` matched nothing, `[ "" -lt 80 ]` errored, and the `if` fell through. The test file also rebuilt its own copy of the Express app, so `index.js` coverage was 0%. Tests now import the real app, Jest enforces `coverageThreshold` (80% lines, currently 81.8%) and the buildspecs run `yarn test --coverage` once instead of twice.
+- `Test_App/index.js` exports the app, starts the server only when run directly and honours `PORT` (the README already documented it).
+- X-Ray daemon sidecar now pulls `public.ecr.aws/xray/aws-xray-daemon:latest` instead of the untagged Docker Hub image, avoiding the Docker Hub rate limit already fixed for the Node base image in 1.0.1.
+
+### Security
+- Dockerfile installs with `yarn install --frozen-lockfile --ignore-scripts` (SonarCloud docker:S6505, docker:S8543); `index.js` uses `const` and `node:http` (javascript:S3504, S7772).
+
+### Docs
+- README: mermaid architecture and deployment-sequence diagrams, design-decisions table, known-limitations section (mutable image tags, AL2 end of support, public test listener, no HTTPS), real clone URL, six IAM roles (not five), Node 20.19+ for Vite 8, Checkov runs with `soft_fail`, branch names in tfvars do not exist in this repo, troubleshooting no longer suggests setting `privileged_mode` (already on).
+- Test_App README: drops the non-existent `/health` endpoint, lists the real routes and the coverage threshold, Node prerequisite corrected from 14 to 20.19+.
+- Client `index.html` title and description no longer say Create React App.
+
 ## [1.3.0] - 2026-10-13
 
 ### Changed

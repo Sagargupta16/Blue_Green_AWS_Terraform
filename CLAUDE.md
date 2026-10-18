@@ -44,7 +44,8 @@ yarn start              # Express on port 3000
 
 ```
 cd Test_App
-yarn test               # Jest + Supertest; CodeBuild gates on >= 80% coverage
+yarn test               # Jest + Supertest against the real index.js
+yarn test --coverage    # fails below 80% lines (jest.coverageThreshold in package.json); CodeBuild runs this
 ```
 
 No Terraform test suite. CI runs `terraform fmt -check` + `terraform validate` + Checkov via the shared workflow.
