@@ -18,6 +18,7 @@
 - Pipeline role: `ecs:RegisterTaskDefinition`, `ecs:DescribeTaskDefinition`, `ecs:TagResource` (on `RegisterTaskDefinition` only), PassRole for both task roles, and `ecs:UpdateService` on this project's clusters only with the `ecs` engine. CodeBuild role: `ecs:DescribeTaskDefinition`.
 - The KMS key has an explicit policy: the default account statement plus CloudWatch, so alarms can publish to the encrypted topics.
 - Terraform `required_version` is now `>= 1.10.0` (S3 `use_lockfile`).
+- Breaking for local runs: with the partial S3 backend, a plain `terraform init` in `terraform/` now prompts for a bucket. Run `terraform init -backend-config=backend.hcl` (add `-migrate-state` once if you have a local `terraform.tfstate`), or `terraform init -backend=false` for validate and test only.
 - Checkov 3.3.29 on `terraform/`: 71 failed / 233 passed before, 70 failed / 266 passed after. The KMS key policy clears CKV2_AWS_64; the new state bucket passes 16 checks and skips 3 with an inline reason (access logs, replication, event notifications).
 
 ### Fixed
