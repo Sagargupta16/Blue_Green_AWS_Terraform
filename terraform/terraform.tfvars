@@ -14,8 +14,8 @@ task_definition_memory       = 512
 task_definition_network_mode = "awsvpc"
 
 # Auto Scaling Group Configuration
-asg_ec2_ami_name      = "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id"
-asg_ec2_instance_type = "t2.large"
+asg_ec2_ami_name      = "/aws/service/ecs/optimized-ami/amazon-linux-2023/recommended/image_id"
+asg_ec2_instance_type = "t3.large"
 asg_desired_capacity  = 2
 asg_max_size          = 4
 asg_min_size          = 2
