@@ -11,3 +11,80 @@ jobs:
     permissions:
       contents: read
       security-events: write
+
+  terraform-test:
+    name: terraform test + tflint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: latest
+          terraform_wrapper: false
+
+      # Mocked providers: no AWS credentials, nothing is created
+      - name: terraform test
+        run: |
+          terraform init -backend=false -input=false
+          terraform test
+
+      - name: validate and test bootstrap module
+        run: |
+          terraform -chdir=bootstrap init -backend=false -input=false
+          terraform -chdir=bootstrap validate -no-color
+          terraform -chdir=bootstrap test
+
+      - uses: terraform-linters/setup-tflint@v6
+        with:
+          tflint_version: v0.64.0
+
+      - name: tflint
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          tflint --init
+          tflint -f compact
+          tflint --chdir=bootstrap --config="$PWD/.tflint.hcl" -f compact
+
+  app:
+    name: Test_App tests + client build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: Test_App
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      # The 80% line-coverage gate lives in package.json (jest.coverageThreshold)
+      - name: test with coverage gate
+        run: |
+          npx --yes yarn@1.22.22 install --frozen-lockfile
+          npx --yes yarn@1.22.22 test --coverage
+
+      - name: build client
+        working-directory: Test_App/client
+        run: |
+          npx --yes yarn@1.22.22 install --frozen-lockfile --ignore-scripts
+          npx --yes yarn@1.22.22 build
+
+  deploy-artifacts:
+    name: deploy artifact renderer
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - name: render-deploy-artifacts tests
+        run: bash scripts/tests/render-deploy-artifacts.test.sh
