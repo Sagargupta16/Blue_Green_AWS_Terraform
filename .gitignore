@@ -1,6 +1,7 @@
 # Terraform files
 .terraform/
-.terraform.lock.hcl
+# .terraform.lock.hcl is committed on purpose (pins provider versions + hashes)
+backend.hcl
 *.tfstate
 *.tfstate.*
 *.tfstate.backup

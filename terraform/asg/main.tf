@@ -30,12 +30,15 @@ resource "aws_launch_template" "ecs_ec2" {
 
   # <<-EOF strips the indentation, so #!/bin/bash lands at byte 0 and
   # cloud-init can exec the script (with <<EOF it fails "Exec format error").
-  user_data = base64encode(<<-EOF
+  # The replace() drops the \r a Windows (core.autocrlf) checkout puts on every
+  # line; without it the shebang reads "/bin/bash\r" and the script never runs.
+  # yum is dnf's alias on Amazon Linux 2023, so the line works on AL2 and AL2023.
+  user_data = base64encode(replace(<<-EOF
     #!/bin/bash
     echo ECS_CLUSTER=${var.ecs_cluster_name} >> /etc/ecs/ecs.config;
     sudo yum update -y
   EOF
-  )
+  , "\r", ""))
 }
 
 

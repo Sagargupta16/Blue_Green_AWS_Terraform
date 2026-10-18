@@ -110,10 +110,10 @@ variable "container_port" {
 }
 
 
-# Source control (GitHub via CodeStar Connection)
+# Source control (GitHub via CodeConnections, formerly CodeStar Connections)
 
 variable "github_connection_arn" {
-  description = "CodeStar Connection ARN authorizing GitHub access."
+  description = "CodeConnections (formerly CodeStar Connections) ARN authorizing GitHub access."
   type        = string
 }
 
@@ -135,4 +135,71 @@ variable "main_branch_name" {
 variable "dev_branch_name" {
   description = "Development branch."
   type        = string
+}
+
+
+# Deployment engine
+
+variable "deployment_engine" {
+  description = "Who runs blue/green: codedeploy (CodeDeploy + CODE_DEPLOY controller) or ecs (ECS native blue/green, no CodeDeploy)."
+  type        = string
+  default     = "codedeploy"
+
+  validation {
+    condition     = contains(["codedeploy", "ecs"], var.deployment_engine)
+    error_message = "deployment_engine must be codedeploy or ecs."
+  }
+}
+
+variable "ecs_deployment_strategy" {
+  description = "ECS native strategy when deployment_engine = ecs: CANARY (shift canary_percent first) or BLUE_GREEN (all at once)."
+  type        = string
+  default     = "CANARY"
+
+  validation {
+    condition     = contains(["CANARY", "BLUE_GREEN"], var.ecs_deployment_strategy)
+    error_message = "ecs_deployment_strategy must be CANARY or BLUE_GREEN."
+  }
+}
+
+variable "canary_percent" {
+  description = "Share of production traffic the new version gets first (both engines)."
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = var.canary_percent >= 1 && var.canary_percent <= 99 && floor(var.canary_percent) == var.canary_percent
+    error_message = "canary_percent must be a whole number from 1 to 99 (CodeDeploy only takes integers)."
+  }
+}
+
+variable "canary_interval_minutes" {
+  description = "Minutes the canary share runs before the rest of the traffic shifts."
+  type        = number
+  default     = 1
+
+  validation {
+    condition     = var.canary_interval_minutes >= 1 && var.canary_interval_minutes <= 1440 && floor(var.canary_interval_minutes) == var.canary_interval_minutes
+    error_message = "canary_interval_minutes must be a whole number from 1 to 1440."
+  }
+}
+
+variable "bake_time_minutes" {
+  description = "Minutes the old (blue) version stays up after the full shift, so a rollback is instant."
+  type        = number
+  default     = 1
+
+  validation {
+    condition     = var.bake_time_minutes >= 0 && var.bake_time_minutes <= 1440 && floor(var.bake_time_minutes) == var.bake_time_minutes
+    error_message = "bake_time_minutes must be a whole number from 0 to 1440."
+  }
+}
+
+
+# Alarms
+
+variable "alarm_email" {
+  description = "Email subscribed to every environment's alarm topic (confirm the AWS mail once). Empty for none."
+  type        = string
+  default     = ""
 }

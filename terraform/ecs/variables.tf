@@ -72,3 +72,62 @@ variable "s3_bucket_name" {
   description = "Shared artifact bucket name."
   type        = string
 }
+
+variable "kms_key_arn" {
+  description = "KMS CMK ARN that encrypts the alarm SNS topic."
+  type        = string
+}
+
+
+# Deployment engine
+
+variable "deployment_engine" {
+  description = "Who runs blue/green: codedeploy (CODE_DEPLOY controller) or ecs (ECS native)."
+  type        = string
+  default     = "codedeploy"
+}
+
+variable "ecs_deployment_strategy" {
+  description = "ECS native strategy: CANARY or BLUE_GREEN. Ignored for codedeploy."
+  type        = string
+  default     = "CANARY"
+}
+
+variable "canary_percent" {
+  description = "Share of production traffic the new version gets first (CANARY only)."
+  type        = number
+  default     = 30
+}
+
+variable "canary_interval_minutes" {
+  description = "Minutes the canary share runs before the rest of the traffic shifts."
+  type        = number
+  default     = 1
+}
+
+variable "bake_time_minutes" {
+  description = "Minutes blue stays up after the full shift, for a fast rollback (ECS native)."
+  type        = number
+  default     = 1
+}
+
+variable "ecs_infrastructure_role_arn" {
+  description = "Role ECS assumes to rewrite listener rules (ECS native only)."
+  type        = string
+  default     = null
+}
+
+
+# Alarms
+
+variable "rollback_5xx_threshold" {
+  description = "Target 5xx responses per minute that roll a deployment back."
+  type        = number
+  default     = 5
+}
+
+variable "alarm_email" {
+  description = "Email subscribed to the alarm topic; empty for none."
+  type        = string
+  default     = ""
+}

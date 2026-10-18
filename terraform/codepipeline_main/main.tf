@@ -1,3 +1,50 @@
+# Locals
+#
+# Both deploy actions read the build artifact, which pins the image by
+# digest (imageDetail.json / imagedefinitions.json). Test and prod therefore
+# run the exact image that was built and tested, even if a newer build lands
+# while this run waits at Manual-Approval.
+
+locals {
+  ecs_native = var.deployment_engine == "ecs"
+
+  deploy_provider = local.ecs_native ? "ECS" : "CodeDeployToECS"
+
+  deploy_targets = {
+    test = {
+      app     = var.test_codedeploy_app_name
+      group   = var.test_deployment_group_name
+      cluster = var.test_ecs_cluster_name
+      service = var.test_ecs_service_name
+    }
+    prod = {
+      app     = var.prod_codedeploy_app_name
+      group   = var.prod_deployment_group_name
+      cluster = var.prod_ecs_cluster_name
+      service = var.prod_ecs_service_name
+    }
+  }
+
+  deploy_config = {
+    for env, target in local.deploy_targets :
+    env => local.ecs_native ? tomap({
+      ClusterName = target.cluster
+      ServiceName = target.service
+      FileName    = "imagedefinitions.json"
+      }) : tomap({
+      ApplicationName                = target.app
+      DeploymentGroupName            = target.group
+      TaskDefinitionTemplateArtifact = "build_output_test"
+      TaskDefinitionTemplatePath     = "taskdef.json"
+      AppSpecTemplateArtifact        = "build_output_test"
+      AppSpecTemplatePath            = "appspec.yml"
+      Image1ArtifactName             = "build_output_test"
+      Image1ContainerName            = "IMAGE1_NAME"
+    })
+  }
+}
+
+
 # Data sources
 
 data "aws_kms_alias" "kmskey" {
@@ -79,14 +126,10 @@ resource "aws_codepipeline" "main" {
       name            = "Deploy"
       category        = "Deploy"
       owner           = "AWS"
-      provider        = "CodeDeploy"
+      provider        = local.deploy_provider
       version         = "1"
       input_artifacts = ["build_output_test"]
-
-      configuration = {
-        ApplicationName     = var.test_codedeploy_app_name
-        DeploymentGroupName = var.test_deployment_group_name
-      }
+      configuration   = local.deploy_config["test"]
     }
   }
 
@@ -110,14 +153,10 @@ resource "aws_codepipeline" "main" {
       name            = "Deploy"
       category        = "Deploy"
       owner           = "AWS"
-      provider        = "CodeDeploy"
+      provider        = local.deploy_provider
       version         = "1"
       input_artifacts = ["build_output_test"]
-
-      configuration = {
-        ApplicationName     = var.prod_codedeploy_app_name
-        DeploymentGroupName = var.prod_deployment_group_name
-      }
+      configuration   = local.deploy_config["prod"]
     }
   }
 }

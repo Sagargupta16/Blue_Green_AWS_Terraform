@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.4.0] - 2026-10-18
+
+### Added
+- ECS native blue/green as a second engine: `deployment_engine = "ecs"` switches each service to the `ECS` controller with the `CANARY` (30% for 1 min, default) or `BLUE_GREEN` strategy, a bake time, the deployment circuit breaker and alarm rollback. It adds weighted listener rules on `:80`/`:8080`, the ECS infrastructure role (`AmazonECSInfrastructureRolePolicyForLoadBalancers`) and the CodePipeline ECS deploy action, and drops every CodeDeploy resource. `deployment_engine = "codedeploy"` stays the default; the CodeDeploy resources gained `count` with `moved` blocks, so existing state keeps its addresses.
+- Rollback alarms per environment: `<env>-Target-5XX` (>= 5 target 5xx a minute) and `<env>-Unhealthy-Hosts` (worst of blue and green, 2 minutes). CodeDeploy watches them through `alarm_configuration` and `DEPLOYMENT_STOP_ON_ALARM`; the `ecs` engine through the service `alarms` block. Every alarm, including the CPU reservation alarm that had `alarm_actions = []`, notifies a CMK-encrypted SNS topic; `alarm_email` subscribes an address.
+- Remote state: partial `backend "s3" {}` with `use_lockfile` (no DynamoDB) and a `terraform/bootstrap/` root module that creates a versioned, SSE-KMS, public-access-blocked, TLS-only state bucket with `prevent_destroy`, plus an SSE-S3 access-log bucket that records every state read and write (log delivery scoped to the state bucket and account, logs kept 365 days by default via `access_log_days`). `.terraform.lock.hcl` is now committed for both root modules, with hashes for linux, darwin and windows.
+- `terraform test` suite (`terraform/tests/`, 21 runs) on mocked providers: both engines from the root, variable validation, the ECS service wiring, CodeDeploy alarm rollback, pipeline deploy actions, IAM grants per engine, listener rules, and the user-data shebang; plus 3 runs in `terraform/bootstrap/tests/` for the state bucket.
+- CI jobs: `terraform test`, tflint 0.64 with the AWS ruleset (root and bootstrap), the Test_App coverage gate and client build, and the deploy-artifact renderer tests.
+- New inputs: `deployment_engine`, `ecs_deployment_strategy`, `canary_percent`, `canary_interval_minutes`, `bake_time_minutes`, `alarm_email`. The CodeDeploy canary reads the same values instead of hardcoded 30 / 1.
+
+### Changed
+- Deploys are pinned to the image digest. The buildspec tags images `<env>-<git sha>`, and [`scripts/render-deploy-artifacts.sh`](scripts/render-deploy-artifacts.sh) writes `taskdef.json` (from the Terraform-registered task definition, app image set to `<IMAGE1_NAME>`), `imageDetail.json`, `appspec.yml` (`<TASK_DEFINITION>`) and `imagedefinitions.json` with `repo@sha256:...`. The deploy action is now `CodeDeployToECS` (or `ECS`), which registers a task-definition revision per build, so test and prod run the image the build tested even if a newer build lands while prod waits for approval. The script refuses a mutable tag or an unknown container; 17 checks in `scripts/tests/`.
+- Tests and the coverage gate run before `docker build`, and `on-failure: ABORT` on the pre_build and build phases keeps CodeBuild out of post_build, so an image that failed its tests is never pushed (before, post_build ran after a failed build phase and pushed `:<env>-latest`).
+- Container-instances use the Amazon Linux 2023 ECS-optimized AMI (AL2 reached end of support on 2026-06-30) and `t3.large` instead of `t2.large`.
+- CodeConnections naming: the pipeline role allows `codeconnections:UseConnection` and `codestar-connections:UseConnection`, scoped to the one connection ARN instead of `*`.
+- Pipeline role: `ecs:RegisterTaskDefinition`, `ecs:DescribeTaskDefinition`, `ecs:TagResource` (on `RegisterTaskDefinition` only), PassRole for both task roles, and `ecs:UpdateService` on this project's clusters only with the `ecs` engine. CodeBuild role: `ecs:DescribeTaskDefinition`.
+- The KMS key has an explicit policy: the default account statement plus CloudWatch, so alarms can publish to the encrypted topics.
+- Terraform `required_version` is now `>= 1.10.0` (S3 `use_lockfile`).
+- Breaking for local runs: with the partial S3 backend, a plain `terraform init` in `terraform/` now prompts for a bucket. Run `terraform init -backend-config=backend.hcl` (add `-migrate-state` once if you have a local `terraform.tfstate`), or `terraform init -backend=false` for validate and test only.
+- Checkov 3.3.29 on `terraform/`: 71 failed / 233 passed before, 70 failed / 292 passed / 6 skipped after. The KMS key policy clears CKV2_AWS_64. The bootstrap module has 0 failures (42 passed, 6 skipped with an inline reason): 2 skips on the state bucket (replication, event notifications) and 4 on the access-log bucket (logging to itself, replication, KMS, which S3 log delivery does not support, event notifications).
+
+### Fixed
+- Listeners ignore `default_action`. CodeDeploy points them at the green target group on every deployment, and the next `terraform apply` used to point traffic back at a target group that could have no tasks.
+- User data strips `\r`. On a Windows checkout (`core.autocrlf=true`) the heredoc carried CRLF, the shebang read `/bin/bash\r`, and the script that writes `ECS_CLUSTER` could not run. Caught by the new `asg` test; `.gitattributes` keeps `*.sh` LF for the same reason.
+
+### Docs
+- README: both engines in the architecture and sequence diagrams, how to switch an existing stack to `ecs`, remote-state setup and migration, what the test suites cover, updated design decisions, configuration table, monitoring, troubleshooting and known limitations (mutable-tag and AL2 entries resolved). `terraform/README.md` and `CLAUDE.md` follow.
+
 ## [1.3.1] - 2026-10-18
 
 ### Fixed

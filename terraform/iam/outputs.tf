@@ -32,3 +32,8 @@ output "codepipeline_role_arn" {
   description = "CodePipeline role ARN."
   value       = aws_iam_role.codepipeline_role.arn
 }
+
+output "ecs_infrastructure_role_arn" {
+  description = "Role ECS assumes for native blue/green (null for codedeploy)."
+  value       = one(aws_iam_role.ecs_infrastructure_role[*].arn)
+}

@@ -1,0 +1,6 @@
+# Copy to backend.hcl (gitignored) or paste `terraform -chdir=bootstrap output -raw backend_hcl`.
+bucket       = "blue-green-dep-app-tfstate-<account_id>"
+key          = "blue-green/terraform.tfstate"
+region       = "us-east-1"
+encrypt      = true
+use_lockfile = true

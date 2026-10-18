@@ -1,3 +1,25 @@
+# Locals
+
+locals {
+  ecs_native = var.deployment_engine == "ecs"
+
+  deploy_config = local.ecs_native ? tomap({
+    ClusterName = var.dev_ecs_cluster_name
+    ServiceName = var.dev_ecs_service_name
+    FileName    = "imagedefinitions.json"
+    }) : tomap({
+    ApplicationName                = var.dev_codedeploy_app_name
+    DeploymentGroupName            = var.dev_deployment_group_name
+    TaskDefinitionTemplateArtifact = "build_output_dev"
+    TaskDefinitionTemplatePath     = "taskdef.json"
+    AppSpecTemplateArtifact        = "build_output_dev"
+    AppSpecTemplatePath            = "appspec.yml"
+    Image1ArtifactName             = "build_output_dev"
+    Image1ContainerName            = "IMAGE1_NAME"
+  })
+}
+
+
 # Data sources
 
 data "aws_kms_alias" "kmskey" {
@@ -79,14 +101,10 @@ resource "aws_codepipeline" "main" {
       name            = "Deploy"
       category        = "Deploy"
       owner           = "AWS"
-      provider        = "CodeDeploy"
+      provider        = local.ecs_native ? "ECS" : "CodeDeployToECS"
       version         = "1"
       input_artifacts = ["build_output_dev"]
-
-      configuration = {
-        ApplicationName     = var.dev_codedeploy_app_name
-        DeploymentGroupName = var.dev_deployment_group_name
-      }
+      configuration   = local.deploy_config
     }
   }
 }

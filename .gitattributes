@@ -1,0 +1,2 @@
+# Shell scripts run on Linux (CodeBuild, CI); a CRLF checkout breaks them.
+*.sh text eol=lf

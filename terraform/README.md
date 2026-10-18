@@ -9,7 +9,7 @@ clusters, two CodePipelines) in a single `terraform apply`.
 
 | Name | Version |
 |------|---------|
-| terraform | >= 1.1.0 |
+| terraform | >= 1.10.0 |
 | aws       | ~> 6.0  |
 | random    | ~> 3.1  |
 
@@ -32,9 +32,9 @@ clusters, two CodePipelines) in a single `terraform apply`.
 | task_definition_main   | ./task_definition   | ECS task definition for main (test + prod) |
 | codebuild_dev     | ./codebuild         | CodeBuild project for dev branch |
 | codebuild_main    | ./codebuild         | CodeBuild project for main branch |
-| codedeploy_dev    | ./codedeploy        | Dev environment (ECS cluster + ALB + CodeDeploy app) |
-| codedeploy_test   | ./codedeploy        | Test environment (ECS cluster + ALB + CodeDeploy app) |
-| codedeploy_prod   | ./codedeploy        | Prod environment (ECS cluster + ALB + CodeDeploy app) |
+| codedeploy_dev    | ./codedeploy        | Dev environment (ECS cluster + ALB + alarms; CodeDeploy app with the codedeploy engine) |
+| codedeploy_test   | ./codedeploy        | Test environment (ECS cluster + ALB + alarms; CodeDeploy app with the codedeploy engine) |
+| codedeploy_prod   | ./codedeploy        | Prod environment (ECS cluster + ALB + alarms; CodeDeploy app with the codedeploy engine) |
 | codepipeline_dev  | ./codepipeline_dev  | Dev pipeline: Source → Build → Deploy-Dev |
 | codepipeline_main | ./codepipeline_main | Main pipeline: Source → Build → Deploy-Test → Approval → Deploy-Prod |
 
@@ -66,6 +66,7 @@ clusters, two CodePipelines) in a single `terraform apply`.
 | aws_launch_template                   | resource |
 | aws_lb                                | resource |
 | aws_lb_listener                       | resource |
+| aws_lb_listener_rule                  | resource (ecs engine) |
 | aws_lb_target_group                   | resource |
 | aws_nat_gateway                       | resource |
 | aws_route_table                       | resource |
@@ -73,6 +74,8 @@ clusters, two CodePipelines) in a single `terraform apply`.
 | aws_s3_bucket                         | resource |
 | aws_security_group                    | resource |
 | aws_security_group_rule               | resource |
+| aws_sns_topic                         | resource |
+| aws_sns_topic_subscription            | resource (when alarm_email is set) |
 | aws_subnet                            | resource |
 | aws_vpc                               | resource |
 | random_pet                            | resource |
@@ -99,11 +102,17 @@ clusters, two CodePipelines) in a single `terraform apply`.
 | asg_min_size                 | Minimum EC2 instance count per environment.                                     | `number`        | n/a          | yes |
 | desired_count                | Desired running ECS task count per service.                                     | `number`        | n/a          | yes |
 | container_port               | Application container port.                                                     | `number`        | n/a          | yes |
-| github_connection_arn        | ARN of the CodeStar Connection authorizing GitHub access.                       | `string`        | n/a          | yes |
+| github_connection_arn        | ARN of the CodeConnections (formerly CodeStar Connections) connection.          | `string`        | n/a          | yes |
 | github_owner                 | GitHub owner / org.                                                             | `string`        | n/a          | yes |
 | github_repo                  | GitHub repository name.                                                         | `string`        | n/a          | yes |
 | main_branch_name             | Branch that triggers the main (test + prod) pipeline.                           | `string`        | n/a          | yes |
 | dev_branch_name              | Branch that triggers the dev pipeline.                                          | `string`        | n/a          | yes |
+| deployment_engine            | `codedeploy` (CodeDeploy + `CODE_DEPLOY` controller) or `ecs` (ECS native blue/green). | `string` | `"codedeploy"` | no |
+| ecs_deployment_strategy      | `CANARY` or `BLUE_GREEN` for the `ecs` engine.                                  | `string`        | `"CANARY"`   | no  |
+| canary_percent               | Whole-number share of production traffic the new version gets first (1-99).    | `number`        | `30`         | no  |
+| canary_interval_minutes      | Minutes the canary share runs before the full shift.                            | `number`        | `1`          | no  |
+| bake_time_minutes            | Minutes blue stays up after the full shift.                                     | `number`        | `1`          | no  |
+| alarm_email                  | Email subscribed to every environment's alarm topic; empty for none.            | `string`        | `""`         | no  |
 
 ## Outputs
 
@@ -112,6 +121,8 @@ clusters, two CodePipelines) in a single `terraform apply`.
 | alb_dns_name_dev  | Public DNS of the dev ALB.  |
 | alb_dns_name_test | Public DNS of the test ALB. |
 | alb_dns_name_prod | Public DNS of the prod ALB. |
+| deployment_engine | Which engine runs blue/green. |
+| rollback_alarms   | Rollback alarm names per environment. |
 
 <!-- END_TF_DOCS -->
 
@@ -128,8 +139,8 @@ task_definition_cpu          = 256
 task_definition_memory       = 512
 task_definition_network_mode = "awsvpc"
 
-asg_ec2_ami_name      = "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id"
-asg_ec2_instance_type = "t2.large"
+asg_ec2_ami_name      = "/aws/service/ecs/optimized-ami/amazon-linux-2023/recommended/image_id"
+asg_ec2_instance_type = "t3.large"
 asg_desired_capacity  = 2
 asg_max_size          = 4
 asg_min_size          = 2
@@ -137,11 +148,18 @@ asg_min_size          = 2
 desired_count  = 2
 container_port = 3000
 
-github_connection_arn = "arn:aws:codestar-connections:us-east-1:<account>:connection/<id>"
+github_connection_arn = "arn:aws:codeconnections:us-east-1:<account>:connection/<id>"
 github_owner          = "Sagargupta16"
 github_repo           = "Blue_Green_AWS_Terraform"
 main_branch_name      = "master"
 dev_branch_name       = "feature/modifications"
+
+deployment_engine       = "codedeploy" # or "ecs"
+ecs_deployment_strategy = "CANARY"
+canary_percent          = 30
+canary_interval_minutes = 1
+bake_time_minutes       = 1
+alarm_email             = ""
 
 common_tags = {
   Project   = "Blue Green Deployment"
@@ -153,9 +171,15 @@ common_tags = {
 ## Usage
 
 ```bash
-terraform init
+# once per account: the state bucket
+terraform -chdir=bootstrap init
+terraform -chdir=bootstrap apply
+terraform -chdir=bootstrap output -raw backend_hcl > backend.hcl
+
+terraform init -backend-config=backend.hcl   # add -migrate-state when coming from local state
 terraform fmt -recursive -check
 terraform validate
+terraform test           # mocked providers, no AWS calls
 terraform plan
 terraform apply
 terraform output          # ALB DNS names for dev / test / prod
@@ -172,12 +196,17 @@ terraform/
 ├── data.tf              # aws_caller_identity
 ├── versions.tf          # provider + version pins, default_tags
 ├── terraform.tfvars     # your values
+├── backend.tf           # partial S3 backend; values in backend.hcl
+├── .terraform.lock.hcl  # provider pins + hashes (committed)
+├── .tflint.hcl          # tflint + AWS ruleset
+├── bootstrap/           # separate root module: S3 state bucket
+├── tests/               # terraform test files + provider mocks
 │
 ├── vpc/                 # network
 ├── security-groups/     # ALB + ECS SGs
 ├── alb/                 # ALB + listeners + target groups
 ├── asg/                 # launch template + ASG + capacity provider
-├── ecs/                 # cluster + service + CW alarm (wraps alb/asg/security-groups)
+├── ecs/                 # cluster + service + rollback alarms + SNS (wraps alb/asg/security-groups)
 ├── task_definition/     # ECS task definition (app + X-Ray sidecar)
 │
 ├── ecr/                 # image repository
@@ -186,7 +215,7 @@ terraform/
 ├── iam/                 # all roles and inline policies
 │
 ├── codebuild/           # CodeBuild project
-├── codedeploy/          # CodeDeploy app + deployment group (wraps ecs/)
+├── codedeploy/          # per-env stack: wraps ecs/, CodeDeploy only for the codedeploy engine
 ├── codepipeline_dev/    # dev CodePipeline
 ├── codepipeline_main/   # main CodePipeline
 └── codecommit/          # DEPRECATED: source moved to GitHub in v1.0.1
@@ -209,14 +238,21 @@ which AWS requires as a distinct construct (not the `tags` argument).
 
 ## Notes
 
-- **State backend:** local state is used by default. For production, migrate
-  to an S3 backend with a DynamoDB lock table; do not commit state files.
-- **CodeDeploy compatibility:** `aws_ecs_service` uses
+- **State backend:** S3 with a native lock file (`use_lockfile`), created by
+  `bootstrap/`. CI runs `terraform init -backend=false`, so it never needs
+  the bucket. Do not commit state files or `backend.hcl`.
+- **Deployment engines:** with `codedeploy`, `aws_ecs_service` uses
   `deployment_controller { type = "CODE_DEPLOY" }`, so
-  `deployment_circuit_breaker` cannot be set. Zero-downtime rebalancing
-  outside of CodeDeploy-driven deployments is handled via
-  `deployment_maximum_percent = 200` and
+  `deployment_circuit_breaker` cannot be set and the rollback alarms sit on the
+  deployment group. With `ecs`, the service uses the `ECS` controller with a
+  `CANARY` or `BLUE_GREEN` `deployment_configuration`, the circuit breaker and
+  an `alarms` block. Both keep `deployment_maximum_percent = 200` and
   `deployment_minimum_healthy_percent = 100`.
+- **Listeners and `ignore_changes`:** CodeDeploy swaps the listener default
+  action on every deployment, so the listeners ignore `default_action`; the
+  ECS-native listener rules ignore `action` for the same reason. Without that,
+  a later `terraform apply` would point traffic back at a target group that
+  may have no tasks.
 - **Branch pins:** the dev pipeline triggers on `dev_branch_name`; the main
   pipeline triggers on `main_branch_name` and promotes the same artifact
   through test → manual approval → prod.

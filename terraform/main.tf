@@ -30,6 +30,8 @@ module "iam" {
   s3_bucket_arn           = module.s3.s3_bucket_arn
   kms_key_arn             = module.kms.kms_key_arn
   codebuild_project_names = ["dev-${var.project_name}", "main-${var.project_name}"]
+  github_connection_arn   = var.github_connection_arn
+  deployment_engine       = var.deployment_engine
 
   depends_on = [module.s3, module.ecr]
 }
@@ -93,7 +95,8 @@ module "codebuild_main" {
 }
 
 
-# CodeDeploy (one per environment)
+# Environments (one per env). The module name is historical: it always
+# builds the ECS stack and adds CodeDeploy only for deployment_engine = codedeploy.
 
 module "codedeploy_dev" {
   source                 = "./codedeploy"
@@ -113,6 +116,15 @@ module "codedeploy_dev" {
   desired_count          = var.desired_count
   ecs_instance_role_name = module.iam.ecs_instance_role_name
   s3_bucket_name         = module.s3.s3_bucket_name
+  kms_key_arn            = module.kms.kms_key_arn
+  alarm_email            = var.alarm_email
+
+  deployment_engine           = var.deployment_engine
+  ecs_deployment_strategy     = var.ecs_deployment_strategy
+  canary_percent              = var.canary_percent
+  canary_interval_minutes     = var.canary_interval_minutes
+  bake_time_minutes           = var.bake_time_minutes
+  ecs_infrastructure_role_arn = module.iam.ecs_infrastructure_role_arn
 }
 
 module "codedeploy_test" {
@@ -133,6 +145,15 @@ module "codedeploy_test" {
   desired_count          = var.desired_count
   ecs_instance_role_name = module.iam.ecs_instance_role_name
   s3_bucket_name         = module.s3.s3_bucket_name
+  kms_key_arn            = module.kms.kms_key_arn
+  alarm_email            = var.alarm_email
+
+  deployment_engine           = var.deployment_engine
+  ecs_deployment_strategy     = var.ecs_deployment_strategy
+  canary_percent              = var.canary_percent
+  canary_interval_minutes     = var.canary_interval_minutes
+  bake_time_minutes           = var.bake_time_minutes
+  ecs_infrastructure_role_arn = module.iam.ecs_infrastructure_role_arn
 }
 
 module "codedeploy_prod" {
@@ -153,6 +174,15 @@ module "codedeploy_prod" {
   desired_count          = var.desired_count
   ecs_instance_role_name = module.iam.ecs_instance_role_name
   s3_bucket_name         = module.s3.s3_bucket_name
+  kms_key_arn            = module.kms.kms_key_arn
+  alarm_email            = var.alarm_email
+
+  deployment_engine           = var.deployment_engine
+  ecs_deployment_strategy     = var.ecs_deployment_strategy
+  canary_percent              = var.canary_percent
+  canary_interval_minutes     = var.canary_interval_minutes
+  bake_time_minutes           = var.bake_time_minutes
+  ecs_infrastructure_role_arn = module.iam.ecs_infrastructure_role_arn
 }
 
 
@@ -171,6 +201,9 @@ module "codepipeline_dev" {
   dev_codedeploy_app_name    = module.codedeploy_dev.codedeploy_app_name
   dev_deployment_group_name  = module.codedeploy_dev.codedeploy_deployment_group_name
   kms_key_alias              = module.kms.kms_key_alias
+  deployment_engine          = var.deployment_engine
+  dev_ecs_cluster_name       = module.codedeploy_dev.ecs_cluster_name
+  dev_ecs_service_name       = module.codedeploy_dev.ecs_service_name
 }
 
 module "codepipeline_main" {
@@ -188,4 +221,9 @@ module "codepipeline_main" {
   prod_codedeploy_app_name    = module.codedeploy_prod.codedeploy_app_name
   prod_deployment_group_name  = module.codedeploy_prod.codedeploy_deployment_group_name
   kms_key_alias               = module.kms.kms_key_alias
+  deployment_engine           = var.deployment_engine
+  test_ecs_cluster_name       = module.codedeploy_test.ecs_cluster_name
+  test_ecs_service_name       = module.codedeploy_test.ecs_service_name
+  prod_ecs_cluster_name       = module.codedeploy_prod.ecs_cluster_name
+  prod_ecs_service_name       = module.codedeploy_prod.ecs_service_name
 }

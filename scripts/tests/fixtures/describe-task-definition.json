@@ -1,0 +1,73 @@
+{
+  "taskDefinition": {
+    "taskDefinitionArn": "arn:aws:ecs:us-east-1:111122223333:task-definition/main-blue-green-dep-app-task-def:7",
+    "containerDefinitions": [
+      {
+        "name": "main-blue-green-dep-app-container",
+        "image": "111122223333.dkr.ecr.us-east-1.amazonaws.com/blue-green-dep-app-ecr-repo:main-latest",
+        "cpu": 0,
+        "portMappings": [
+          {
+            "containerPort": 3000,
+            "hostPort": 3000,
+            "protocol": "tcp"
+          }
+        ],
+        "essential": true,
+        "logConfiguration": {
+          "logDriver": "awslogs",
+          "options": {
+            "awslogs-create-group": "true",
+            "awslogs-group": "main-blue-green-dep-app-LogGroup",
+            "awslogs-region": "us-east-1",
+            "awslogs-stream-prefix": "ecs"
+          }
+        }
+      },
+      {
+        "name": "xray-daemon",
+        "image": "public.ecr.aws/xray/aws-xray-daemon:latest",
+        "cpu": 0,
+        "portMappings": [
+          {
+            "containerPort": 2000,
+            "hostPort": 2000,
+            "protocol": "udp"
+          }
+        ],
+        "essential": false,
+        "logConfiguration": {
+          "logDriver": "awslogs",
+          "options": {
+            "awslogs-create-group": "true",
+            "awslogs-group": "main-blue-green-dep-app-LogGroup",
+            "awslogs-region": "us-east-1",
+            "awslogs-stream-prefix": "xray"
+          }
+        }
+      }
+    ],
+    "family": "main-blue-green-dep-app-task-def",
+    "taskRoleArn": "arn:aws:iam::111122223333:role/blue-green-dep-app-EcsTaskRole",
+    "executionRoleArn": "arn:aws:iam::111122223333:role/blue-green-dep-app-EcsTaskExecutionRole",
+    "networkMode": "awsvpc",
+    "revision": 7,
+    "volumes": [],
+    "status": "ACTIVE",
+    "requiresAttributes": [
+      {
+        "name": "com.amazonaws.ecs.capability.logging-driver.awslogs"
+      },
+      {
+        "name": "ecs.capability.task-eni"
+      }
+    ],
+    "placementConstraints": [],
+    "compatibilities": ["EC2"],
+    "requiresCompatibilities": ["EC2"],
+    "cpu": "256",
+    "memory": "512",
+    "registeredAt": "2026-10-18T10:00:00.000000+00:00",
+    "registeredBy": "arn:aws:iam::111122223333:user/terraform"
+  }
+}

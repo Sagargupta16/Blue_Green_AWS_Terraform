@@ -57,3 +57,16 @@ output "listener_8080_port_arns" {
   description = "Port 8080 listener ARNs (test)."
   value       = module.alb.listener_8080_port_arns
 }
+
+
+# Alarms
+
+output "rollback_alarm_names" {
+  description = "CloudWatch alarms that roll back an in-flight deployment."
+  value       = local.rollback_alarm_names
+}
+
+output "alarm_topic_arn" {
+  description = "SNS topic every alarm in this environment notifies."
+  value       = aws_sns_topic.alarms.arn
+}
