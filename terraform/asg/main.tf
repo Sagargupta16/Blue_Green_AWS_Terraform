@@ -28,7 +28,9 @@ resource "aws_launch_template" "ecs_ec2" {
     enabled = true
   }
 
-  user_data = base64encode(<<EOF
+  # <<-EOF strips the indentation, so #!/bin/bash lands at byte 0 and
+  # cloud-init can exec the script (with <<EOF it fails "Exec format error").
+  user_data = base64encode(<<-EOF
     #!/bin/bash
     echo ECS_CLUSTER=${var.ecs_cluster_name} >> /etc/ecs/ecs.config;
     sudo yum update -y
