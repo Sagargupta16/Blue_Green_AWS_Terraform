@@ -21,6 +21,7 @@ check() {
     fail=$((fail + 1))
     echo "FAIL $name"
   fi
+  return 0
 }
 
 digest="111122223333.dkr.ecr.us-east-1.amazonaws.com/blue-green-dep-app-ecr-repo@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
@@ -30,6 +31,7 @@ render() {
   IMAGE_URI=$1 task_definition_arn="arn:aws:ecs:us-east-1:111122223333:task-definition/main-blue-green-dep-app-task-def:7" \
     container_name=$2 container_port=$3 TASKDEF_SOURCE="$fixture" OUT_DIR="$work/out" \
     bash "$script" >/dev/null 2>"$work/stderr"
+  return $?
 }
 
 # Happy path
@@ -72,4 +74,4 @@ check "rejects a non-numeric port" test $? -ne 0
 
 echo
 echo "$pass passed, $fail failed"
-test "$fail" -eq 0
+[[ "$fail" -eq 0 ]]

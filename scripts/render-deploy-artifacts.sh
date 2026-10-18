@@ -35,11 +35,12 @@ case "$container_port" in
     echo "container_port must be a number, got: $container_port" >&2
     exit 1
     ;;
+  *) ;;
 esac
 
 mkdir -p "$OUT_DIR"
 
-if [ -n "${TASKDEF_SOURCE:-}" ]; then
+if [[ -n "${TASKDEF_SOURCE:-}" ]]; then
   describe=$(cat "$TASKDEF_SOURCE")
 else
   describe=$(aws ecs describe-task-definition --task-definition "$task_definition_arn" --output json)
