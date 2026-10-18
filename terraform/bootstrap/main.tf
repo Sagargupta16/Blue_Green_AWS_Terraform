@@ -205,35 +205,53 @@ resource "aws_s3_bucket_lifecycle_configuration" "access_logs" {
 
 # With ACLs disabled (BucketOwnerEnforced), the logging service writes through
 # the bucket policy, scoped to the state bucket in this account.
+data "aws_iam_policy_document" "access_logs" {
+  statement {
+    sid       = "S3ServerAccessLogsFromStateBucket"
+    effect    = "Allow"
+    actions   = ["s3:PutObject"]
+    resources = ["${aws_s3_bucket.access_logs.arn}/state/*"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["logging.s3.amazonaws.com"]
+    }
+
+    condition {
+      test     = "ArnLike"
+      variable = "aws:SourceArn"
+      values   = [aws_s3_bucket.state.arn]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+  }
+
+  statement {
+    sid       = "DenyInsecureTransport"
+    effect    = "Deny"
+    actions   = ["s3:*"]
+    resources = [aws_s3_bucket.access_logs.arn, "${aws_s3_bucket.access_logs.arn}/*"]
+
+    principals {
+      type        = "*"
+      identifiers = ["*"]
+    }
+
+    condition {
+      test     = "Bool"
+      variable = "aws:SecureTransport"
+      values   = ["false"]
+    }
+  }
+}
+
 resource "aws_s3_bucket_policy" "access_logs" {
   bucket = aws_s3_bucket.access_logs.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid       = "S3ServerAccessLogsFromStateBucket"
-        Effect    = "Allow"
-        Principal = { Service = "logging.s3.amazonaws.com" }
-        Action    = "s3:PutObject"
-        Resource  = "${aws_s3_bucket.access_logs.arn}/state/*"
-        Condition = {
-          ArnLike      = { "aws:SourceArn" = aws_s3_bucket.state.arn }
-          StringEquals = { "aws:SourceAccount" = data.aws_caller_identity.current.account_id }
-        }
-      },
-      {
-        Sid       = "DenyInsecureTransport"
-        Effect    = "Deny"
-        Principal = "*"
-        Action    = "s3:*"
-        Resource  = [aws_s3_bucket.access_logs.arn, "${aws_s3_bucket.access_logs.arn}/*"]
-        Condition = {
-          Bool = { "aws:SecureTransport" = "false" }
-        }
-      },
-    ]
-  })
+  policy = data.aws_iam_policy_document.access_logs.json
 
   depends_on = [aws_s3_bucket_public_access_block.access_logs]
 }

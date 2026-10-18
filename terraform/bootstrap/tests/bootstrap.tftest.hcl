@@ -8,6 +8,14 @@ mock_provider "aws" {
     }
   }
 
+  # The mocked json would be random text; the bucket policy needs valid JSON.
+  # Assertions read the document's statement blocks instead.
+  mock_data "aws_iam_policy_document" {
+    defaults = {
+      json = "{\"Version\":\"2012-10-17\",\"Statement\":[]}"
+    }
+  }
+
   mock_resource "aws_s3_bucket" {
     defaults = {
       arn = "arn:aws:s3:::blue-green-dep-app-tfstate-111122223333"
@@ -57,7 +65,7 @@ run "bucket_is_locked_down" {
   }
 
   assert {
-    condition     = jsondecode(aws_s3_bucket_policy.access_logs.policy).Statement[0].Condition.StringEquals["aws:SourceAccount"] == "111122223333"
+    condition     = contains(flatten([for s in data.aws_iam_policy_document.access_logs.statement : [for c in s.condition : c.values if c.variable == "aws:SourceAccount"]]), "111122223333")
     error_message = "Log delivery must be scoped to this account."
   }
 }

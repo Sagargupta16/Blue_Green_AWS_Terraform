@@ -19,7 +19,7 @@
 - The KMS key has an explicit policy: the default account statement plus CloudWatch, so alarms can publish to the encrypted topics.
 - Terraform `required_version` is now `>= 1.10.0` (S3 `use_lockfile`).
 - Breaking for local runs: with the partial S3 backend, a plain `terraform init` in `terraform/` now prompts for a bucket. Run `terraform init -backend-config=backend.hcl` (add `-migrate-state` once if you have a local `terraform.tfstate`), or `terraform init -backend=false` for validate and test only.
-- Checkov 3.3.29 on `terraform/`: 71 failed / 233 passed before, 70 failed / 282 passed / 6 skipped after. The KMS key policy clears CKV2_AWS_64. The bootstrap module has 0 failures: the state bucket passes 16 checks and skips 2 with an inline reason (replication, event notifications), the access-log bucket passes 15 and skips 4 (logging to itself, replication, KMS, which S3 log delivery does not support, event notifications).
+- Checkov 3.3.29 on `terraform/`: 71 failed / 233 passed before, 70 failed / 292 passed / 6 skipped after. The KMS key policy clears CKV2_AWS_64. The bootstrap module has 0 failures (42 passed, 6 skipped with an inline reason): 2 skips on the state bucket (replication, event notifications) and 4 on the access-log bucket (logging to itself, replication, KMS, which S3 log delivery does not support, event notifications).
 
 ### Fixed
 - Listeners ignore `default_action`. CodeDeploy points them at the green target group on every deployment, and the next `terraform apply` used to point traffic back at a target group that could have no tasks.
