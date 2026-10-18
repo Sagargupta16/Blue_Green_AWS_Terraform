@@ -45,6 +45,21 @@ run "bucket_is_locked_down" {
     condition     = jsondecode(aws_s3_bucket_policy.state.policy).Statement[0].Condition.Bool["aws:SecureTransport"] == "false"
     error_message = "The bucket policy must deny non-TLS requests."
   }
+
+  assert {
+    condition     = aws_s3_bucket_logging.state.target_bucket == aws_s3_bucket.access_logs.id
+    error_message = "State bucket access logs must go to the access-log bucket."
+  }
+
+  assert {
+    condition     = one([for r in aws_s3_bucket_server_side_encryption_configuration.access_logs.rule : r.apply_server_side_encryption_by_default[0].sse_algorithm]) == "AES256"
+    error_message = "S3 server access logs are delivered only to SSE-S3 buckets."
+  }
+
+  assert {
+    condition     = jsondecode(aws_s3_bucket_policy.access_logs.policy).Statement[0].Condition.StringEquals["aws:SourceAccount"] == "111122223333"
+    error_message = "Log delivery must be scoped to this account."
+  }
 }
 
 run "backend_hcl_matches_the_bucket" {

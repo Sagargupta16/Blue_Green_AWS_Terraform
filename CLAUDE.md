@@ -92,7 +92,7 @@ CI (`.github/workflows/ci.yml`): the shared workflow (fmt, validate, Checkov wit
 ## Environment          (IaC)
 
 - Environments: dev / test / prod -- each gets its own ECS cluster, ALB (blue/green target groups), and ASG in one account, us-east-1
-- State backend: S3 with native lock file (`use_lockfile`), bucket from `terraform/bootstrap/` (versioned, SSE-KMS, `prevent_destroy`)
+- State backend: S3 with native lock file (`use_lockfile`), bucket from `terraform/bootstrap/` (versioned, SSE-KMS, `prevent_destroy`, server access logs to an SSE-S3 log bucket)
 - Required secrets: `github_connection_arn` (CodeConnections ARN, currently in tfvars)
 - Destroy safeguards: ALB deletion protection on; prod deploys gated by a manual approval stage in the main pipeline; `prevent_destroy` only on the state bucket
 - Rollback: per-env alarms `<env>-Target-5XX` and `<env>-Unhealthy-Hosts` roll back either engine; all alarms notify `<env>-alarms` (SNS, CMK-encrypted, optional `alarm_email`)

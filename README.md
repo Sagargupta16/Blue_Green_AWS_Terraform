@@ -54,7 +54,7 @@ flowchart LR
 - **IAM**: six scoped roles (instance / task execution / task / codebuild / codedeploy / codepipeline), plus an ECS infrastructure role for the `ecs` engine
 - **KMS**: single symmetric CMK (key rotation on) shared by ECR, CodeBuild, CodePipeline, CodeDeploy and the alarm topics; its key policy lets CloudWatch publish to the encrypted SNS topics
 - **S3**: artifact bucket for CodeBuild/CodePipeline (objects written by the pipeline are encrypted with the CMK)
-- **Remote state**: S3 backend with native lock files (`use_lockfile`, no DynamoDB table); [`terraform/bootstrap/`](terraform/bootstrap/) creates the versioned, encrypted, public-access-blocked state bucket
+- **Remote state**: S3 backend with native lock files (`use_lockfile`, no DynamoDB table); [`terraform/bootstrap/`](terraform/bootstrap/) creates the versioned, encrypted, public-access-blocked state bucket and a bucket for its server access logs
 
 ## Features
 
@@ -188,7 +188,7 @@ On a fresh stack that is all. On a stack already deployed with `codedeploy`, the
 │   ├── backend.hcl.example       # Shape of the gitignored backend.hcl
 │   ├── .terraform.lock.hcl       # Provider versions + hashes (committed)
 │   ├── .tflint.hcl               # tflint + AWS ruleset config
-│   ├── bootstrap/                # Separate root module: the S3 state bucket
+│   ├── bootstrap/                # Separate root module: S3 state bucket + access-log bucket
 │   ├── tests/                    # terraform test files + provider mocks (no AWS needed)
 │   ├── vpc/                      # VPC, subnets, IGW, NAT gateways, route tables
 │   ├── security-groups/          # ALB & ECS security groups
@@ -312,7 +312,7 @@ What the Terraform suite checks (`terraform/tests/`, 21 runs):
 - the pipeline role can pass both task roles and register task definitions, and only gets `ecs:UpdateService` with the `ecs` engine,
 - the launch-template user data starts with `#!/bin/bash` at byte 0.
 
-`terraform/bootstrap/tests/` (3 runs) checks the state bucket: versioning, SSE-KMS, the four public access blocks, the TLS-only policy, and that `backend_hcl` names the bucket with `use_lockfile = true`.
+`terraform/bootstrap/tests/` (3 runs) checks the state bucket: versioning, SSE-KMS, the four public access blocks, the TLS-only policy, access logs going to the SSE-S3 log bucket with delivery scoped to the account, and that `backend_hcl` names the bucket with `use_lockfile = true`.
 
 The renderer tests (17 checks) feed a saved `describe-task-definition` response through the script and check the placeholders, the digest, the stripped read-only fields, and that a mutable tag or an unknown container is refused.
 

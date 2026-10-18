@@ -26,3 +26,9 @@ variable "noncurrent_version_days" {
   type        = number
   default     = 90
 }
+
+variable "access_log_days" {
+  description = "Days the state bucket's server access logs are kept."
+  type        = number
+  default     = 365
+}
