@@ -150,7 +150,7 @@ container_port = 3000
 
 github_connection_arn = "arn:aws:codeconnections:us-east-1:<account>:connection/<id>"
 github_owner          = "Sagargupta16"
-github_repo           = "Blue_Green_AWS_Terraform"
+github_repo           = "terraform-aws-ecs-blue-green"
 main_branch_name      = "master"
 dev_branch_name       = "feature/modifications"
 

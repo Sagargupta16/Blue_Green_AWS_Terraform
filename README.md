@@ -1,6 +1,6 @@
 # Blue-Green Deployment with AWS Terraform
 
-[![CI](https://github.com/Sagargupta16/Blue_Green_AWS_Terraform/actions/workflows/ci.yml/badge.svg)](https://github.com/Sagargupta16/Blue_Green_AWS_Terraform/actions/workflows/ci.yml)
+[![CI](https://github.com/Sagargupta16/terraform-aws-ecs-blue-green/actions/workflows/ci.yml/badge.svg)](https://github.com/Sagargupta16/terraform-aws-ecs-blue-green/actions/workflows/ci.yml)
 [![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=Sagargupta16_Blue_Green_AWS_Terraform&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Sagargupta16_Blue_Green_AWS_Terraform)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
@@ -119,8 +119,8 @@ flowchart LR
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/Sagargupta16/Blue_Green_AWS_Terraform.git
-   cd Blue_Green_AWS_Terraform
+   git clone https://github.com/Sagargupta16/terraform-aws-ecs-blue-green.git
+   cd terraform-aws-ecs-blue-green
    ```
 
 2. **Configure AWS credentials**

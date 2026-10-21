@@ -11,7 +11,7 @@ variables {
   kms_key_alias         = "alias/test-app-kms-key"
   github_connection_arn = "arn:aws:codeconnections:us-east-1:111122223333:connection/00000000-0000-0000-0000-000000000000"
   github_owner          = "Sagargupta16"
-  github_repo           = "Blue_Green_AWS_Terraform"
+  github_repo           = "terraform-aws-ecs-blue-green"
   artifact_bucket       = "test-app-artifacts"
 }
 
