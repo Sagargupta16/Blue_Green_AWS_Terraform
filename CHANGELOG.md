@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.4.1] - 2026-10-21
+
+### Docs
+- README: two architecture figures drawn with [orrery](https://github.com/Sagargupta16/orrery) from the Terraform, each in a dark and a light SVG that follow the reader's theme. `docs/diagrams/runtime.yaml` shows one environment: the internet gateway, the ALB in both public subnets with the blue and green target groups, ECS tasks on the EC2 Auto Scaling group in both private subnets, the NAT gateways, ECR, X-Ray, the rollback alarms, the SNS topic and the KMS key. `docs/diagrams/pipeline.yaml` shows both pipelines: GitHub through CodeConnections, CodeBuild, CodeDeploy to test, the manual approval and CodeDeploy to prod, the dev pipeline, ECR, the artifact bucket and alarm rollback. Every node carries the file and line it comes from. The Mermaid flowchart stays, folded under the figures; Project Structure lists `docs/diagrams/`.
+
 ## [1.4.0] - 2026-10-18
 
 ### Added

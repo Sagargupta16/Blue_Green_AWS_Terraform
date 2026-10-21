@@ -1,0 +1,47 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Sagargupta16/orrery/main/skills/orrery/references/diagram.schema.json
+# Rendered with orrery (github.com/Sagargupta16/orrery):
+#   orrery render docs/diagrams/pipeline.yaml -o docs/diagrams/pipeline -f svg --theme both
+# Reviewed at README width: orrery review docs/diagrams/pipeline.yaml --width 880
+title: Build once, deploy the digest
+subtitle: "Shown with deployment_engine = codedeploy (default); ecs swaps each CodeDeploy action for the ECS deploy action"
+direction: down
+layout: { layering: simplex }
+legend:
+  dashed: Rolls the deployment back on alarm
+
+groups:
+  cloud: { type: aws:cloud }
+  region: { type: aws:region, label: us-east-1, in: cloud, evidence: terraform/terraform.tfvars:2 }
+  main: { type: aws:generic, label: main pipeline, icon: aws:codepipeline, in: region, evidence: terraform/codepipeline_main/main.tf:57 }
+  devp: { type: aws:generic, label: dev pipeline, icon: aws:codepipeline, in: region, evidence: terraform/codepipeline_dev/main.tf:32 }
+
+nodes:
+  developer: { icon: aws:user, label: Developer, note: git push }
+  github: { icon: logos:github-icon, label: GitHub repository, note: via CodeConnections, evidence: terraform/codepipeline_main/main.tf:97 }
+  build: { icon: aws:codebuild, label: AWS CodeBuild, note: "Jest 80% gate, docker build", in: main, evidence: terraform/codepipeline_main/main.tf:104 }
+  deploy-test: { icon: aws:codedeploy, label: AWS CodeDeploy, note: "test: 30% canary for 1 min", in: main, evidence: terraform/codepipeline_main/main.tf:122 }
+  approval: { icon: generic:approval, label: Manual approval, in: main, evidence: terraform/codepipeline_main/main.tf:136 }
+  deploy-prod: { icon: aws:codedeploy, label: AWS CodeDeploy, note: "prod: same artifact, same canary", in: main, evidence: terraform/codepipeline_main/main.tf:149 }
+  ecr: { icon: aws:elastic-container-registry, label: Amazon Elastic Container Registry, note: "main-<sha> and dev-<sha> tags", in: region, evidence: terraform/ecr/main.tf:10 }
+  s3: { icon: aws:simple-storage-service-bucket, label: Artifact bucket, note: "digest-pinned taskdef, KMS", in: region, evidence: terraform/s3/main.tf:8 }
+  alarms: { icon: aws:cloudwatch-alarm, label: CloudWatch alarms, note: "per environment: target 5xx, unhealthy hosts", in: region, evidence: terraform/codedeploy/main.tf:98 }
+  build-dev: { icon: aws:codebuild, label: AWS CodeBuild, note: same buildspec, in: devp, evidence: terraform/codepipeline_dev/main.tf:79 }
+  deploy-dev: { icon: aws:codedeploy, label: AWS CodeDeploy, note: "dev: 30% canary for 1 min", in: devp, evidence: terraform/codepipeline_dev/main.tf:97 }
+
+edges:
+  - { from: developer, to: github, constraint: false }
+  - github -> build: main branch
+  - { from: github, to: build-dev, label: dev branch, constraint: false }
+  # The stages of each pipeline stay in one row; their outputs hang below.
+  - { from: build, to: deploy-test, constraint: false }
+  - { from: deploy-test, to: approval, constraint: false }
+  - { from: approval, to: deploy-prod, constraint: false }
+  - { from: build-dev, to: deploy-dev, constraint: false }
+  - build -> ecr: push image
+  - build -> s3
+  # Written from the shared resources so the dev pipeline sits below them.
+  - { from: ecr, to: build-dev, arrow: start }
+  - { from: s3, to: build-dev, arrow: start }
+  - { from: deploy-prod, to: alarms, arrow: start, line: dashed }
+  - { from: alarms, to: deploy-test, line: dashed, constraint: false }
+  - { from: alarms, to: deploy-dev, line: dashed }

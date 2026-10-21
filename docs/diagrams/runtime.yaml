@@ -1,0 +1,55 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Sagargupta16/orrery/main/skills/orrery/references/diagram.schema.json
+# Rendered with orrery (github.com/Sagargupta16/orrery):
+#   orrery render docs/diagrams/runtime.yaml -o docs/diagrams/runtime -f svg --theme both
+# Reviewed at README width: orrery review docs/diagrams/runtime.yaml --width 880
+title: One environment on AWS
+subtitle: dev, test and prod each get this stack (own ALB, ECS cluster and Auto Scaling group) in the shared VPC
+direction: down
+layout: { spacing: compact, merge: false }
+legend:
+  dashed: Outbound through the NAT gateways
+  dotted: Encrypted with the project KMS key
+
+groups:
+  cloud: { type: aws:cloud }
+  region: { type: aws:region, label: us-east-1, in: cloud, evidence: terraform/terraform.tfvars:2 }
+  vpc: { type: aws:vpc, label: VPC 10.0.0.0/16, in: region, evidence: terraform/vpc/main.tf:3 }
+  az-a: { type: aws:az, label: Availability Zone us-east-1a, in: vpc, evidence: terraform/terraform.tfvars:3 }
+  az-b: { type: aws:az, label: Availability Zone us-east-1b, in: vpc, evidence: terraform/terraform.tfvars:3 }
+  public-a: { type: aws:public-subnet, label: Public subnet, in: az-a, evidence: terraform/vpc/main.tf:12 }
+  private-a: { type: aws:private-subnet, label: Private subnet, in: az-a, evidence: terraform/vpc/main.tf:26 }
+  private-b: { type: aws:private-subnet, label: Private subnet, in: az-b, evidence: terraform/vpc/main.tf:32 }
+  public-b: { type: aws:public-subnet, label: Public subnet, in: az-b, evidence: terraform/vpc/main.tf:19 }
+  asg: { type: aws:auto-scaling, label: Auto Scaling group and ECS capacity provider, around: [private-a, private-b], evidence: terraform/asg/main.tf:47 }
+
+nodes:
+  users: { icon: aws:users, label: Users, evidence: terraform/security-groups/main.tf:18 }
+  igw: { icon: aws:vpc-internet-gateway, label: Internet gateway, in: region, on: vpc, evidence: terraform/vpc/main.tf:41 }
+  alb: { icon: aws:elastic-load-balancing-application-load-balancer, label: Application Load Balancer, note: in both public subnets, in: vpc, evidence: terraform/alb/main.tf:3 }
+  blue: { shape: rounded, label: Blue target group, note: live version, color: "#2563eb", in: vpc, evidence: terraform/alb/main.tf:17 }
+  green: { shape: rounded, label: Green target group, note: new version during a deploy, color: "#16a34a", in: vpc, evidence: terraform/alb/main.tf:34 }
+  nat-a: { icon: aws:vpc-nat-gateway, label: NAT gateway, in: public-a, evidence: terraform/vpc/main.tf:53 }
+  ecs-a: { icon: aws:elastic-container-service, label: Amazon Elastic Container Service, note: "tasks on EC2 t3.large, AL2023", in: private-a, evidence: terraform/ecs/main.tf:72 }
+  ecs-b: { icon: aws:elastic-container-service, label: Amazon Elastic Container Service, note: "tasks on EC2 t3.large, AL2023", in: private-b, evidence: terraform/ecs/main.tf:72 }
+  nat-b: { icon: aws:vpc-nat-gateway, label: NAT gateway, in: public-b, evidence: terraform/vpc/main.tf:58 }
+  xray: { icon: aws:x-ray, label: AWS X-Ray, note: via the daemon sidecar, in: region, evidence: terraform/task_definition/main.tf:42 }
+  ecr: { icon: aws:elastic-container-registry, label: Amazon Elastic Container Registry, note: scan on push, in: region, align: xray, evidence: terraform/ecr/main.tf:10 }
+  kms: { icon: aws:key-management-service, label: AWS Key Management Service, note: project key, in: region, align: xray, evidence: terraform/kms/main.tf:8 }
+  sns: { icon: aws:simple-notification-service-topic, label: SNS alarm topic, in: region, align: xray, evidence: terraform/ecs/main.tf:249 }
+  alarms: { icon: aws:cloudwatch-alarm, label: CloudWatch alarms, note: "target 5xx, unhealthy hosts", in: region, align: xray, evidence: terraform/ecs/main.tf:184 }
+
+edges:
+  - users -> igw: "HTTP :80, :8080"
+  - igw -> alb
+  - alb -> blue: ":80 prod"
+  - alb -> green: ":8080 test, 30% of :80"
+  - blue -> asg
+  - green -> asg
+  - { from: ecs-a, to: nat-a, line: dashed, constraint: false }
+  - { from: ecs-b, to: nat-b, line: dashed, constraint: false }
+  - { from: asg, to: xray, line: dashed, label: traces }
+  - { from: asg, to: ecr, arrow: start, line: dashed, label: image pull }
+  - alb -> alarms: metrics
+  - { from: alarms, to: sns, constraint: false }
+  - { from: ecr, to: kms, line: dotted, constraint: false }
+  - { from: sns, to: kms, line: dotted, constraint: false }
