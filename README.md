@@ -14,6 +14,23 @@ Infrastructure-as-Code for a multi-environment Blue/Green deployment pipeline on
 
 ## Architecture
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/runtime-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="docs/diagrams/runtime-light.svg">
+  <img width="880" src="docs/diagrams/runtime-light.svg" alt="One environment on AWS in us-east-1. Users reach an internet gateway on the VPC (10.0.0.0/16) over HTTP on ports 80 and 8080. The internet gateway leads to an Application Load Balancer in both public subnets, which sends port 80 production traffic to the blue target group and port 8080 test traffic, then 30% of port 80 during a deploy, to the green target group. Both target groups route to ECS tasks on t3.large Amazon Linux 2023 EC2 instances in the private subnets of Availability Zones us-east-1a and us-east-1b, inside one Auto Scaling group with an ECS capacity provider. Each private subnet sends outbound traffic through the NAT gateway in its zone's public subnet. Below the VPC, the tasks pull images from Amazon Elastic Container Registry and send traces to AWS X-Ray; the load balancer's metrics feed CloudWatch alarms for target 5xx and unhealthy hosts, which publish to an SNS alarm topic. The registry and the topic are encrypted with the project AWS KMS key. dev, test and prod each get this stack in the shared VPC.">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/pipeline-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="docs/diagrams/pipeline-light.svg">
+  <img width="880" src="docs/diagrams/pipeline-light.svg" alt="Build once, deploy the digest. A developer pushes to the GitHub repository, which CodePipeline reads through a CodeConnections connection. A push to the main branch starts the main pipeline: AWS CodeBuild runs the Jest 80% coverage gate and the docker build, then AWS CodeDeploy deploys to test with a 30% canary for 1 minute, a manual approval follows, and AWS CodeDeploy deploys the same artifact to prod with the same canary. A push to the dev branch starts the dev pipeline: AWS CodeBuild with the same buildspec, then AWS CodeDeploy to dev. Both builds push images tagged main or dev plus the git sha to Amazon Elastic Container Registry and write the digest-pinned task definition to the KMS-encrypted artifact bucket. Per-environment CloudWatch alarms for target 5xx and unhealthy hosts roll back the test, prod and dev deployments. Shown with deployment_engine set to codedeploy, the default; the ecs engine swaps each CodeDeploy action for the ECS deploy action.">
+</picture>
+
+The specs behind the pictures are [`docs/diagrams/runtime.yaml`](docs/diagrams/runtime.yaml) and [`docs/diagrams/pipeline.yaml`](docs/diagrams/pipeline.yaml), rendered with [orrery](https://github.com/Sagargupta16/orrery).
+
+<details>
+<summary>Both engines in one Mermaid flowchart</summary>
+
 ```mermaid
 flowchart LR
     dev[git push] --> conn[CodeConnections]
@@ -40,6 +57,8 @@ flowchart LR
     cw -. alarm = roll back .-> native
     ecr -. image pull by digest .-> ecs
 ```
+
+</details>
 
 - **ECS on EC2**: containerized application hosting with an Auto Scaling Group of Amazon Linux 2023 container-instances (one cluster per environment)
 - **Application Load Balancer**: per-environment ALB with two target groups (blue/green) and two listeners (`:80` prod traffic, `:8080` test traffic). With the `ecs` engine each listener also gets a weighted rule that ECS shifts
@@ -218,6 +237,8 @@ On a fresh stack that is all. On a stack already deployed with `codedeploy`, the
 ├── scripts/
 │   ├── render-deploy-artifacts.sh  # taskdef.json, imageDetail.json, appspec.yml, imagedefinitions.json
 │   └── tests/                    # Bash tests with a saved describe-task-definition fixture
+├── docs/
+│   └── diagrams/                 # orrery specs (*.yaml) and the dark/light SVGs in this README
 ├── buildspec.yml                 # Active CodeBuild spec (referenced by CodeBuild projects)
 ├── renovate.json                 # Monthly grouped dep updates
 ├── CHANGELOG.md
