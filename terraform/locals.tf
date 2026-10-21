@@ -6,7 +6,7 @@ locals {
     {
       ProjectName   = var.project_name
       CreatedBy     = "Terraform"
-      Repository    = "Blue_Green_AWS_Terraform"
+      Repository    = "terraform-aws-ecs-blue-green"
       Branch        = "feature/modifications"
       ResourceGroup = var.project_name
     }

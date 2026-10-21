@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.4.2] - 2026-10-21
+
+### Changed
+- Repository renamed from `Blue_Green_AWS_Terraform` to `terraform-aws-ecs-blue-green`, the Terraform Registry naming (`terraform-<provider>-<name>`); GitHub redirects the old URL. `github_repo` in `terraform.tfvars`, the `terraform/README.md` example and `tests/pipelines.tftest.hcl` now name the new repository, so the next `apply` points both CodePipeline sources (through CodeConnections) at it. The `Repository` default tag in `locals.tf`, the README badge and clone commands, and the SECURITY report subject follow. The SonarCloud project key (`Sagargupta16_Blue_Green_AWS_Terraform`) is unchanged.
+
 ## [1.4.1] - 2026-10-21
 
 ### Docs
