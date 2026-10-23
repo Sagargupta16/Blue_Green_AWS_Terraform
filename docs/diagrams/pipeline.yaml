@@ -24,7 +24,7 @@ nodes:
   deploy-prod: { icon: aws:codedeploy, label: AWS CodeDeploy, note: "prod: same artifact, same canary", in: main, evidence: terraform/codepipeline_main/main.tf:149 }
   ecr: { icon: aws:elastic-container-registry, label: Amazon Elastic Container Registry, note: "main-<sha> and dev-<sha> tags", in: region, evidence: terraform/ecr/main.tf:10 }
   s3: { icon: aws:simple-storage-service-bucket, label: Artifact bucket, note: "digest-pinned taskdef, KMS", in: region, evidence: terraform/s3/main.tf:8 }
-  alarms: { icon: aws:cloudwatch-alarm, label: CloudWatch alarms, note: "per environment: target 5xx, unhealthy hosts", in: region, evidence: terraform/codedeploy/main.tf:98 }
+  alarms: { icon: aws:cloudwatch-alarm, label: CloudWatch alarms, note: "per environment: target 5xx, unhealthy hosts", in: region, align: s3, evidence: terraform/codedeploy/main.tf:98 }
   build-dev: { icon: aws:codebuild, label: AWS CodeBuild, note: same buildspec, in: devp, evidence: terraform/codepipeline_dev/main.tf:79 }
   deploy-dev: { icon: aws:codedeploy, label: AWS CodeDeploy, note: "dev: 30% canary for 1 min", in: devp, evidence: terraform/codepipeline_dev/main.tf:97 }
 
@@ -39,9 +39,11 @@ edges:
   - { from: build-dev, to: deploy-dev, constraint: false }
   - build -> ecr: push image
   - build -> s3
-  # Written from the shared resources so the dev pipeline sits below them.
+  # Written from the shared resources so the dev pipeline sits below them, and
+  # from both main deploys so the alarms hang below the main pipeline, in the
+  # row with ECR and S3 (align: s3).
   - { from: ecr, to: build-dev, arrow: start }
   - { from: s3, to: build-dev, arrow: start }
   - { from: deploy-prod, to: alarms, arrow: start, line: dashed }
-  - { from: alarms, to: deploy-test, line: dashed, constraint: false }
+  - { from: deploy-test, to: alarms, arrow: start, line: dashed }
   - { from: alarms, to: deploy-dev, line: dashed }
