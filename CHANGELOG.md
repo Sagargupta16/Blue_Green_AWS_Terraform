@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.4.3] - 2026-10-23
+
+### Docs
+- README: redrew both architecture figures with orrery 0.12.0, which draws icons at 64 px instead of 48 px. In `docs/diagrams/pipeline.yaml` the CloudWatch alarms now sit in the row with ECR and the artifact bucket, and the test rollback edge is written from the deploy (`arrow: start`, as the prod one already was), so it no longer runs beside the build's artifact edge. Same nodes, edges and evidence.
+
 ## [1.4.2] - 2026-10-21
 
 ### Changed
