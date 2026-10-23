@@ -1,59 +1,59 @@
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1106" height="1622" viewBox="0 0 1106 1622" role="img" aria-labelledby="runtime-dark-sdw-title runtime-dark-sdw-desc" font-family="&#39;Geist Mono&#39;, ui-monospace, SFMono-Regular, Menlo, Consolas, &#39;Liberation Mono&#39;, monospace">
-<metadata><orrery:spec xmlns:orrery="https://sagargupta.online/orrery/spec" version="1"># yaml-language-server: $schema=https://raw.githubusercontent.com/Sagargupta16/orrery/main/skills/orrery/references/diagram.schema.json&#13;
-# Rendered with orrery (github.com/Sagargupta16/orrery):&#13;
-#   orrery render docs/diagrams/runtime.yaml -o docs/diagrams/runtime -f svg --theme both&#13;
-# Reviewed at README width: orrery review docs/diagrams/runtime.yaml --width 880&#13;
-title: One environment on AWS&#13;
-subtitle: dev, test and prod each get this stack (own ALB, ECS cluster and Auto Scaling group) in the shared VPC&#13;
-direction: down&#13;
-layout: { spacing: compact, merge: false }&#13;
-legend:&#13;
-  dashed: Outbound through the NAT gateways&#13;
-  dotted: Encrypted with the project KMS key&#13;
-&#13;
-groups:&#13;
-  cloud: { type: aws:cloud }&#13;
-  region: { type: aws:region, label: us-east-1, in: cloud, evidence: terraform/terraform.tfvars:2 }&#13;
-  vpc: { type: aws:vpc, label: VPC 10.0.0.0/16, in: region, evidence: terraform/vpc/main.tf:3 }&#13;
-  az-a: { type: aws:az, label: Availability Zone us-east-1a, in: vpc, evidence: terraform/terraform.tfvars:3 }&#13;
-  az-b: { type: aws:az, label: Availability Zone us-east-1b, in: vpc, evidence: terraform/terraform.tfvars:3 }&#13;
-  public-a: { type: aws:public-subnet, label: Public subnet, in: az-a, evidence: terraform/vpc/main.tf:12 }&#13;
-  private-a: { type: aws:private-subnet, label: Private subnet, in: az-a, evidence: terraform/vpc/main.tf:26 }&#13;
-  private-b: { type: aws:private-subnet, label: Private subnet, in: az-b, evidence: terraform/vpc/main.tf:32 }&#13;
-  public-b: { type: aws:public-subnet, label: Public subnet, in: az-b, evidence: terraform/vpc/main.tf:19 }&#13;
-  asg: { type: aws:auto-scaling, label: Auto Scaling group and ECS capacity provider, around: [private-a, private-b], evidence: terraform/asg/main.tf:47 }&#13;
-&#13;
-nodes:&#13;
-  users: { icon: aws:users, label: Users, evidence: terraform/security-groups/main.tf:18 }&#13;
-  igw: { icon: aws:vpc-internet-gateway, label: Internet gateway, in: region, on: vpc, evidence: terraform/vpc/main.tf:41 }&#13;
-  alb: { icon: aws:elastic-load-balancing-application-load-balancer, label: Application Load Balancer, note: in both public subnets, in: vpc, evidence: terraform/alb/main.tf:3 }&#13;
-  blue: { shape: rounded, label: Blue target group, note: live version, color: "#2563eb", in: vpc, evidence: terraform/alb/main.tf:17 }&#13;
-  green: { shape: rounded, label: Green target group, note: new version during a deploy, color: "#16a34a", in: vpc, evidence: terraform/alb/main.tf:34 }&#13;
-  nat-a: { icon: aws:vpc-nat-gateway, label: NAT gateway, in: public-a, evidence: terraform/vpc/main.tf:53 }&#13;
-  ecs-a: { icon: aws:elastic-container-service, label: Amazon Elastic Container Service, note: "tasks on EC2 t3.large, AL2023", in: private-a, evidence: terraform/ecs/main.tf:72 }&#13;
-  ecs-b: { icon: aws:elastic-container-service, label: Amazon Elastic Container Service, note: "tasks on EC2 t3.large, AL2023", in: private-b, evidence: terraform/ecs/main.tf:72 }&#13;
-  nat-b: { icon: aws:vpc-nat-gateway, label: NAT gateway, in: public-b, evidence: terraform/vpc/main.tf:58 }&#13;
-  xray: { icon: aws:x-ray, label: AWS X-Ray, note: via the daemon sidecar, in: region, evidence: terraform/task_definition/main.tf:42 }&#13;
-  ecr: { icon: aws:elastic-container-registry, label: Amazon Elastic Container Registry, note: scan on push, in: region, align: xray, evidence: terraform/ecr/main.tf:10 }&#13;
-  kms: { icon: aws:key-management-service, label: AWS Key Management Service, note: project key, in: region, align: xray, evidence: terraform/kms/main.tf:8 }&#13;
-  sns: { icon: aws:simple-notification-service-topic, label: SNS alarm topic, in: region, align: xray, evidence: terraform/ecs/main.tf:249 }&#13;
-  alarms: { icon: aws:cloudwatch-alarm, label: CloudWatch alarms, note: "target 5xx, unhealthy hosts", in: region, align: xray, evidence: terraform/ecs/main.tf:184 }&#13;
-&#13;
-edges:&#13;
-  - users -> igw: "HTTP :80, :8080"&#13;
-  - igw -> alb&#13;
-  - alb -> blue: ":80 prod"&#13;
-  - alb -> green: ":8080 test, 30% of :80"&#13;
-  - blue -> asg&#13;
-  - green -> asg&#13;
-  - { from: ecs-a, to: nat-a, line: dashed, constraint: false }&#13;
-  - { from: ecs-b, to: nat-b, line: dashed, constraint: false }&#13;
-  - { from: asg, to: xray, line: dashed, label: traces }&#13;
-  - { from: asg, to: ecr, arrow: start, line: dashed, label: image pull }&#13;
-  - alb -> alarms: metrics&#13;
-  - { from: alarms, to: sns, constraint: false }&#13;
-  - { from: ecr, to: kms, line: dotted, constraint: false }&#13;
-  - { from: sns, to: kms, line: dotted, constraint: false }&#13;
+<metadata><orrery:spec xmlns:orrery="https://sagargupta.online/orrery/spec" version="1"># yaml-language-server: $schema=https://raw.githubusercontent.com/Sagargupta16/orrery/main/skills/orrery/references/diagram.schema.json
+# Rendered with orrery (github.com/Sagargupta16/orrery):
+#   orrery render docs/diagrams/runtime.yaml -o docs/diagrams/runtime -f svg --theme both
+# Reviewed at README width: orrery review docs/diagrams/runtime.yaml --width 880
+title: One environment on AWS
+subtitle: dev, test and prod each get this stack (own ALB, ECS cluster and Auto Scaling group) in the shared VPC
+direction: down
+layout: { spacing: compact, merge: false }
+legend:
+  dashed: Outbound through the NAT gateways
+  dotted: Encrypted with the project KMS key
+
+groups:
+  cloud: { type: aws:cloud }
+  region: { type: aws:region, label: us-east-1, in: cloud, evidence: terraform/terraform.tfvars:2 }
+  vpc: { type: aws:vpc, label: VPC 10.0.0.0/16, in: region, evidence: terraform/vpc/main.tf:3 }
+  az-a: { type: aws:az, label: Availability Zone us-east-1a, in: vpc, evidence: terraform/terraform.tfvars:3 }
+  az-b: { type: aws:az, label: Availability Zone us-east-1b, in: vpc, evidence: terraform/terraform.tfvars:3 }
+  public-a: { type: aws:public-subnet, label: Public subnet, in: az-a, evidence: terraform/vpc/main.tf:12 }
+  private-a: { type: aws:private-subnet, label: Private subnet, in: az-a, evidence: terraform/vpc/main.tf:26 }
+  private-b: { type: aws:private-subnet, label: Private subnet, in: az-b, evidence: terraform/vpc/main.tf:32 }
+  public-b: { type: aws:public-subnet, label: Public subnet, in: az-b, evidence: terraform/vpc/main.tf:19 }
+  asg: { type: aws:auto-scaling, label: Auto Scaling group and ECS capacity provider, around: [private-a, private-b], evidence: terraform/asg/main.tf:47 }
+
+nodes:
+  users: { icon: aws:users, label: Users, evidence: terraform/security-groups/main.tf:18 }
+  igw: { icon: aws:vpc-internet-gateway, label: Internet gateway, in: region, on: vpc, evidence: terraform/vpc/main.tf:41 }
+  alb: { icon: aws:elastic-load-balancing-application-load-balancer, label: Application Load Balancer, note: in both public subnets, in: vpc, evidence: terraform/alb/main.tf:3 }
+  blue: { shape: rounded, label: Blue target group, note: live version, color: "#2563eb", in: vpc, evidence: terraform/alb/main.tf:17 }
+  green: { shape: rounded, label: Green target group, note: new version during a deploy, color: "#16a34a", in: vpc, evidence: terraform/alb/main.tf:34 }
+  nat-a: { icon: aws:vpc-nat-gateway, label: NAT gateway, in: public-a, evidence: terraform/vpc/main.tf:53 }
+  ecs-a: { icon: aws:elastic-container-service, label: Amazon Elastic Container Service, note: "tasks on EC2 t3.large, AL2023", in: private-a, evidence: terraform/ecs/main.tf:72 }
+  ecs-b: { icon: aws:elastic-container-service, label: Amazon Elastic Container Service, note: "tasks on EC2 t3.large, AL2023", in: private-b, evidence: terraform/ecs/main.tf:72 }
+  nat-b: { icon: aws:vpc-nat-gateway, label: NAT gateway, in: public-b, evidence: terraform/vpc/main.tf:58 }
+  xray: { icon: aws:x-ray, label: AWS X-Ray, note: via the daemon sidecar, in: region, evidence: terraform/task_definition/main.tf:42 }
+  ecr: { icon: aws:elastic-container-registry, label: Amazon Elastic Container Registry, note: scan on push, in: region, align: xray, evidence: terraform/ecr/main.tf:10 }
+  kms: { icon: aws:key-management-service, label: AWS Key Management Service, note: project key, in: region, align: xray, evidence: terraform/kms/main.tf:8 }
+  sns: { icon: aws:simple-notification-service-topic, label: SNS alarm topic, in: region, align: xray, evidence: terraform/ecs/main.tf:249 }
+  alarms: { icon: aws:cloudwatch-alarm, label: CloudWatch alarms, note: "target 5xx, unhealthy hosts", in: region, align: xray, evidence: terraform/ecs/main.tf:184 }
+
+edges:
+  - users -> igw: "HTTP :80, :8080"
+  - igw -> alb
+  - alb -> blue: ":80 prod"
+  - alb -> green: ":8080 test, 30% of :80"
+  - blue -> asg
+  - green -> asg
+  - { from: ecs-a, to: nat-a, line: dashed, constraint: false }
+  - { from: ecs-b, to: nat-b, line: dashed, constraint: false }
+  - { from: asg, to: xray, line: dashed, label: traces }
+  - { from: asg, to: ecr, arrow: start, line: dashed, label: image pull }
+  - alb -> alarms: metrics
+  - { from: alarms, to: sns, constraint: false }
+  - { from: ecr, to: kms, line: dotted, constraint: false }
+  - { from: sns, to: kms, line: dotted, constraint: false }
 </orrery:spec></metadata>
 <title id="runtime-dark-sdw-title">One environment on AWS</title>
 <desc id="runtime-dark-sdw-desc">One environment on AWS. 14 components in 10 groups. Connections: Users to Internet gateway (HTTP :80, :8080); Internet gateway to Application Load Balancer; Application Load Balancer to Blue target group (:80 prod); Application Load Balancer to Green target group (:8080 test, 30% of :80); Blue target group to Auto Scaling group and ECS capacity provider; Green target group to Auto Scaling group and ECS capacity provider; Amazon Elastic Container Service to NAT gateway; Amazon Elastic Container Service to NAT gateway; Auto Scaling group and ECS capacity provider to AWS X-Ray (traces); Auto Scaling group and ECS capacity provider to Amazon Elastic Container Registry (image pull); Application Load Balancer to CloudWatch alarms (metrics); CloudWatch alarms to SNS alarm topic; Amazon Elastic Container Registry to AWS Key Management Service; SNS alarm topic to AWS Key Management Service.</desc>
