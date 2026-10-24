@@ -17,12 +17,15 @@ resource "aws_ecs_task_definition" "task_def" {
   execution_role_arn       = var.ecs_task_execution_role_arn
   task_role_arn            = var.ecs_task_role_arn
 
+  # Both containers run with a read-only root filesystem: the app only reads
+  # client/build and logs to stdout, and the X-Ray daemon only logs to stdout.
   container_definitions = jsonencode([
     {
-      name      = local.container_name
-      image     = var.task_definition_image
-      cpu       = 0
-      essential = true
+      name                   = local.container_name
+      image                  = var.task_definition_image
+      cpu                    = 0
+      essential              = true
+      readonlyRootFilesystem = true
       portMappings = [
         {
           containerPort = var.container_port
@@ -40,10 +43,11 @@ resource "aws_ecs_task_definition" "task_def" {
       }
     },
     {
-      name      = "xray-daemon"
-      image     = "public.ecr.aws/xray/aws-xray-daemon:latest"
-      cpu       = 0
-      essential = false
+      name                   = "xray-daemon"
+      image                  = "public.ecr.aws/xray/aws-xray-daemon:latest"
+      cpu                    = 0
+      essential              = false
+      readonlyRootFilesystem = true
       portMappings = [
         {
           containerPort = 2000

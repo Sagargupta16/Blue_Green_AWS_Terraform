@@ -23,6 +23,7 @@ variables {
   asg_max_size           = 4
   asg_min_size           = 2
   s3_bucket_name         = "test-app-artifacts"
+  log_bucket_name        = "test-app-logs"
   kms_key_arn            = "arn:aws:kms:us-east-1:111122223333:key/00000000-0000-0000-0000-000000000000"
 }
 

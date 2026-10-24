@@ -9,6 +9,13 @@ resource "aws_lb" "alb" {
   enable_deletion_protection = true
   idle_timeout               = 60
   drop_invalid_header_fields = true
+
+  # The log bucket policy (s3 module) allows ELB log delivery under alb/.
+  access_logs {
+    bucket  = var.access_logs_bucket
+    prefix  = "alb/${var.name}"
+    enabled = true
+  }
 }
 
 

@@ -23,7 +23,7 @@ clusters, two CodePipelines) in a single `terraform apply`.
 
 | Name | Source | Purpose |
 |------|--------|---------|
-| s3                | ./s3                | Artifact bucket (KMS-encrypted) |
+| s3                | ./s3                | Artifact bucket (versioned, SSE-KMS) + log bucket for ALB access logs, VPC flow logs and S3 access logs |
 | vpc               | ./vpc               | VPC, subnets, IGW, NAT gateways, route tables |
 | kms               | ./kms               | Customer-managed CMK + alias (rotation on) |
 | ecr               | ./ecr               | Private image repository (KMS-encrypted, scan-on-push) |
@@ -49,6 +49,7 @@ clusters, two CodePipelines) in a single `terraform apply`.
 | aws_codedeploy_deployment_config      | resource |
 | aws_codedeploy_deployment_group       | resource |
 | aws_codepipeline                      | resource |
+| aws_default_security_group            | resource |
 | aws_ecr_repository                    | resource |
 | aws_ecs_capacity_provider             | resource |
 | aws_ecs_cluster                       | resource |
@@ -56,6 +57,7 @@ clusters, two CodePipelines) in a single `terraform apply`.
 | aws_ecs_service                       | resource |
 | aws_ecs_task_definition               | resource |
 | aws_eip                               | resource |
+| aws_flow_log                          | resource |
 | aws_iam_instance_profile              | resource |
 | aws_iam_role                          | resource |
 | aws_iam_role_policy                   | resource |
@@ -72,6 +74,13 @@ clusters, two CodePipelines) in a single `terraform apply`.
 | aws_route_table                       | resource |
 | aws_route_table_association           | resource |
 | aws_s3_bucket                         | resource |
+| aws_s3_bucket_lifecycle_configuration | resource |
+| aws_s3_bucket_logging                 | resource |
+| aws_s3_bucket_ownership_controls      | resource |
+| aws_s3_bucket_policy                  | resource |
+| aws_s3_bucket_public_access_block     | resource |
+| aws_s3_bucket_server_side_encryption_configuration | resource |
+| aws_s3_bucket_versioning              | resource |
 | aws_security_group                    | resource |
 | aws_security_group_rule               | resource |
 | aws_sns_topic                         | resource |
@@ -80,6 +89,7 @@ clusters, two CodePipelines) in a single `terraform apply`.
 | aws_vpc                               | resource |
 | random_pet                            | resource |
 | aws_caller_identity                   | data source |
+| aws_iam_policy_document               | data source |
 | aws_kms_alias                         | data source |
 | aws_ssm_parameter                     | data source |
 
@@ -211,14 +221,13 @@ terraform/
 │
 ├── ecr/                 # image repository
 ├── kms/                 # pipeline CMK + alias
-├── s3/                  # artifact bucket
+├── s3/                  # artifact bucket + log bucket
 ├── iam/                 # all roles and inline policies
 │
 ├── codebuild/           # CodeBuild project
 ├── codedeploy/          # per-env stack: wraps ecs/, CodeDeploy only for the codedeploy engine
 ├── codepipeline_dev/    # dev CodePipeline
-├── codepipeline_main/   # main CodePipeline
-└── codecommit/          # DEPRECATED: source moved to GitHub in v1.0.1
+└── codepipeline_main/   # main CodePipeline
 ```
 
 ## Tagging Model

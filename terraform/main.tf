@@ -1,14 +1,18 @@
 # Foundation
 
 module "s3" {
-  source = "./s3"
-  name   = var.project_name
+  source      = "./s3"
+  name        = var.project_name
+  account_id  = data.aws_caller_identity.current.account_id
+  region      = var.aws_region
+  kms_key_arn = module.kms.kms_key_arn
 }
 
 module "vpc" {
-  source             = "./vpc"
-  availability_zones = var.availability_zones
-  vpc_cidr           = var.vpc_cidr
+  source              = "./vpc"
+  availability_zones  = var.availability_zones
+  vpc_cidr            = var.vpc_cidr
+  flow_log_bucket_arn = module.s3.log_bucket_arn
 }
 
 module "kms" {
@@ -116,6 +120,7 @@ module "codedeploy_dev" {
   desired_count          = var.desired_count
   ecs_instance_role_name = module.iam.ecs_instance_role_name
   s3_bucket_name         = module.s3.s3_bucket_name
+  log_bucket_name        = module.s3.log_bucket_name
   kms_key_arn            = module.kms.kms_key_arn
   alarm_email            = var.alarm_email
 
@@ -145,6 +150,7 @@ module "codedeploy_test" {
   desired_count          = var.desired_count
   ecs_instance_role_name = module.iam.ecs_instance_role_name
   s3_bucket_name         = module.s3.s3_bucket_name
+  log_bucket_name        = module.s3.log_bucket_name
   kms_key_arn            = module.kms.kms_key_arn
   alarm_email            = var.alarm_email
 
@@ -174,6 +180,7 @@ module "codedeploy_prod" {
   desired_count          = var.desired_count
   ecs_instance_role_name = module.iam.ecs_instance_role_name
   s3_bucket_name         = module.s3.s3_bucket_name
+  log_bucket_name        = module.s3.log_bucket_name
   kms_key_arn            = module.kms.kms_key_arn
   alarm_email            = var.alarm_email
 

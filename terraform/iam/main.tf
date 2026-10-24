@@ -219,6 +219,9 @@ resource "aws_iam_role_policy" "codedeploy_inline" {
   name = "${var.name}-CodedeployPolicy"
   role = aws_iam_role.codedeploy_role.id
 
+  # Resource-scoped to this project's per-env clusters (<env>-<name>-cluster),
+  # ALBs (<env>-<name>-ALB) and rollback alarms (<env>-<name>-...). The ELB
+  # Describe* calls have no resource-level permissions and stay on "*".
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -226,27 +229,42 @@ resource "aws_iam_role_policy" "codedeploy_inline" {
         Effect = "Allow"
         Action = [
           "ecs:DescribeServices",
+          "ecs:UpdateServicePrimaryTaskSet"
+        ]
+        Resource = "arn:aws:ecs:${var.region}:${var.account_id}:service/*-${var.name}-cluster/*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
           "ecs:CreateTaskSet",
-          "ecs:UpdateServicePrimaryTaskSet",
           "ecs:DeleteTaskSet"
         ]
-        Resource = "*"
+        Resource = "arn:aws:ecs:${var.region}:${var.account_id}:task-set/*-${var.name}-cluster/*"
       },
       {
         Effect = "Allow"
         Action = [
           "elasticloadbalancing:DescribeTargetGroups",
           "elasticloadbalancing:DescribeListeners",
-          "elasticloadbalancing:ModifyListener",
-          "elasticloadbalancing:DescribeRules",
-          "elasticloadbalancing:ModifyRule"
+          "elasticloadbalancing:DescribeRules"
         ]
         Resource = "*"
       },
       {
+        Effect = "Allow"
+        Action = [
+          "elasticloadbalancing:ModifyListener",
+          "elasticloadbalancing:ModifyRule"
+        ]
+        Resource = [
+          "arn:aws:elasticloadbalancing:${var.region}:${var.account_id}:listener/app/*-${var.name}-*/*",
+          "arn:aws:elasticloadbalancing:${var.region}:${var.account_id}:listener-rule/app/*-${var.name}-*/*"
+        ]
+      },
+      {
         Effect   = "Allow"
         Action   = ["cloudwatch:DescribeAlarms"]
-        Resource = "*"
+        Resource = "arn:aws:cloudwatch:${var.region}:${var.account_id}:alarm:*-${var.name}-*"
       },
       {
         Effect = "Allow"

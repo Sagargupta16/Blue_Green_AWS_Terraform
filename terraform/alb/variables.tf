@@ -23,3 +23,8 @@ variable "create_listener_rules" {
   type        = bool
   default     = false
 }
+
+variable "access_logs_bucket" {
+  description = "S3 bucket the ALB writes its access logs to."
+  type        = string
+}

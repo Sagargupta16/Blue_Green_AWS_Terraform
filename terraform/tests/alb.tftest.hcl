@@ -10,6 +10,7 @@ variables {
   vpc_id             = "vpc-0123456789abcdef0"
   subnets            = ["subnet-0000000000000000a", "subnet-0000000000000000b"]
   security_group_ids = ["sg-0123456789abcdef0"]
+  access_logs_bucket = "test-app-logs"
 }
 
 run "no_rules_for_codedeploy" {

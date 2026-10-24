@@ -84,7 +84,8 @@ CI (`.github/workflows/ci.yml`): the shared workflow (fmt, validate, Checkov wit
 - `terraform/terraform.tfvars` is committed and contains a real CodeConnections (codestar-connections) ARN with the AWS account ID -- deviates from the workspace infra rule (no real `.tfvars` values). Flag before adding more real values; don't add secrets.
 - Pipeline trigger branches in tfvars are `master` and `feature/modifications` -- those are the deployed app-source branches CodePipeline watches, not this repo's CI branch (`main`). Don't "fix" them to `main` without checking the live connection setup.
 - Tagging is provider-level `default_tags` only. Modules do not accept a `tags` variable -- never add per-resource `tags =` (exception: `aws_autoscaling_group` `tag {}` blocks, required by AWS).
-- `terraform/codecommit/` is deprecated (GitHub source replaced CodeCommit). Don't extend it.
+- The ECS security group only allows TCP 443 out (1.5.0). A workload that needs another port gets its own egress rule; don't widen `ecs_egress` back to all protocols.
+- One log bucket (`s3/`) takes the ALB access logs (`alb/<env>-<project>/`), VPC flow logs (`vpc-flow-logs/`) and the artifact bucket's access logs (`artifact-bucket/`). Its policy is per prefix: a new log source needs its own statement. It must stay SSE-S3 (ALB and S3 log delivery reject KMS).
 - Listeners ignore `default_action` and the ECS-native listener rules ignore `action`: CodeDeploy / ECS move traffic there, and Terraform must not move it back.
 - The buildspec starts `dockerd` manually even though the CodeBuild module already sets `privileged_mode = true`; if builds hang there, that is why.
 - Test_App uses Yarn, not pnpm -- CodeBuild and the Dockerfile assume Yarn.

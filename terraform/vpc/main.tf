@@ -6,6 +6,22 @@ resource "aws_vpc" "main" {
   enable_dns_hostnames = true
 }
 
+# Nothing in the stack uses the VPC's default security group. Managing it
+# with no rules strips the allow-all rules AWS creates, so anything launched
+# without a group of its own gets no network access.
+resource "aws_default_security_group" "default" {
+  vpc_id = aws_vpc.main.id
+}
+
+# Flow logs land in the log bucket from the s3 module, whose policy lets
+# delivery.logs.amazonaws.com write under vpc-flow-logs/.
+resource "aws_flow_log" "main" {
+  vpc_id               = aws_vpc.main.id
+  traffic_type         = "ALL"
+  log_destination_type = "s3"
+  log_destination      = "${var.flow_log_bucket_arn}/vpc-flow-logs/"
+}
+
 
 # Subnets
 

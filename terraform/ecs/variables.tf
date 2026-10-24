@@ -73,6 +73,11 @@ variable "s3_bucket_name" {
   type        = string
 }
 
+variable "log_bucket_name" {
+  description = "Log bucket the ALB writes its access logs to."
+  type        = string
+}
+
 variable "kms_key_arn" {
   description = "KMS CMK ARN that encrypts the alarm SNS topic."
   type        = string

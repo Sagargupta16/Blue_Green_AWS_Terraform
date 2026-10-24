@@ -32,6 +32,7 @@ module "alb" {
   subnets               = var.public_subnets
   vpc_id                = var.vpc_id
   create_listener_rules = local.ecs_native
+  access_logs_bucket    = var.log_bucket_name
 }
 
 module "asg" {
