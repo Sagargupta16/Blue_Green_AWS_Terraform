@@ -69,10 +69,10 @@ flowchart LR
 - **ECS native blue/green** (`ecs` engine): `CANARY` (or `BLUE_GREEN`) deployment strategy with bake time, deployment circuit breaker and alarm rollback, driven by the CodePipeline ECS action
 - **CloudWatch alarms**: per environment, target 5xx count and unhealthy targets (worst of blue and green); both engines roll back on them, and every alarm (plus the existing CPU reservation alarm) notifies a KMS-encrypted SNS topic
 - **ECR**: KMS-encrypted image registry with scan-on-push
-- **VPC**: 2-AZ network, 2 public subnets, 2 private subnets, 2 NAT gateways, flow logs to S3, and a default security group with no rules
-- **IAM**: six scoped roles (instance / task execution / task / codebuild / codedeploy / codepipeline), plus an ECS infrastructure role for the `ecs` engine
+- **VPC**: 2-AZ network, 2 public subnets, 2 private subnets, 2 NAT gateways, flow logs to a CMK-encrypted log group, and a default security group with no rules
+- **IAM**: seven scoped roles (instance / task execution / task / codebuild / codedeploy / codepipeline / VPC flow logs), plus an ECS infrastructure role for the `ecs` engine
 - **KMS**: single symmetric CMK (key rotation on) shared by ECR, CodeBuild, CodePipeline, CodeDeploy and the alarm topics; its key policy lets CloudWatch publish to the encrypted SNS topics
-- **S3**: artifact bucket for CodeBuild/CodePipeline (versioned, SSE-KMS with the CMK, public access blocked) and a log bucket for the ALB access logs, the VPC flow logs and the artifact bucket's server access logs
+- **S3**: artifact bucket for CodeBuild/CodePipeline (versioned, SSE-KMS with the CMK, public access blocked)
 - **Remote state**: S3 backend with native lock files (`use_lockfile`, no DynamoDB table); [`terraform/bootstrap/`](terraform/bootstrap/) creates the versioned, encrypted, public-access-blocked state bucket and a bucket for its server access logs
 
 ## Features
@@ -222,7 +222,7 @@ On a fresh stack that is all. On a stack already deployed with `codedeploy`, the
 │   ├── ecr/                      # Private ECR repo (KMS-encrypted, scan-on-push)
 │   ├── iam/                      # All IAM roles & inline policies
 │   ├── kms/                      # Pipeline KMS CMK + alias
-│   └── s3/                       # Artifact bucket + log bucket (ALB access logs, flow logs, S3 access logs)
+│   └── s3/                       # Artifact bucket
 ├── Test_App/                     # Express + React reference application
 │   ├── buildspec.yml             # CodeBuild spec (alternate; the repo-root one is the active one)
 │   ├── Dockerfile                # Multi-stage (client builder -> server)
@@ -352,13 +352,12 @@ The renderer tests (17 checks) feed a saved `describe-task-definition` response 
 - **IMDSv2 required** on the EC2 launch template.
 - **KMS key rotation** enabled on the pipeline CMK.
 - **ECR image scanning** on push.
-- **ALB**: deletion protection, invalid-header drop, access logs to the log bucket.
-- **Network**: every security group rule has a description; the ECS group only allows HTTPS (TCP 443) out, through the NAT gateways; the VPC's default security group has no rules; VPC flow logs record all traffic to the log bucket.
+- **ALB**: deletion protection, invalid-header drop.
+- **Network**: every security group rule has a description; the ECS group only allows HTTPS (TCP 443) out, through the NAT gateways; the VPC's default security group has no rules; VPC flow logs record all traffic into a log group encrypted with the CMK and kept 365 days.
 - **CodeDeploy role**: task sets, services, listeners, listener rules and alarms are scoped to this project's resources; only the ELB `Describe*` calls stay on `*`.
 - **Containers**: read-only root filesystem for the app and the X-Ray daemon; the image runs as the `node` user.
 - **Rate limiting**: the Test_App allows 300 requests a minute per client (`express-rate-limit`, keyed on the client address the ALB forwards).
-- **Artifact bucket**: versioned, SSE-KMS with the project CMK, public access blocked, overwritten versions expire after 30 days, server access logs to the log bucket.
-- **Log bucket**: SSE-S3 (the only encryption ALB and S3 log delivery accept), versioned, public access blocked, TLS-only, each log service limited to its own prefix in this account, logs expire after 90 days.
+- **Artifact bucket**: versioned, SSE-KMS with the project CMK, public access blocked, overwritten versions expire after 30 days.
 - **Locked installs**: the Dockerfile runs `yarn install --frozen-lockfile --ignore-scripts`.
 - **State bucket**: versioned, SSE-KMS, public access blocked, TLS-only bucket policy, `prevent_destroy`.
 - **CI security scanning**: every push to `main` and every PR runs:
@@ -381,7 +380,8 @@ Honest list of what a production version would change:
   - No WAF on the ALBs (CKV2_AWS_28): a web ACL per environment costs money every month and can block real requests, so it is left to the deployer.
   - CodeBuild `privileged_mode` (CKV_AWS_316): `docker build` needs it.
   - Mutable ECR tags (CKV_AWS_51): every build moves `<env>-latest` for the bootstrap task definition. Deploys pin the digest, so a moved tag never changes what runs, and Checkov accepts only `IMMUTABLE`.
-  - No cross-region replication or event notifications on the artifact, log and state buckets (CKV_AWS_144, CKV2_AWS_62), and SSE-S3 rather than KMS on the two log buckets (CKV_AWS_145), which is all S3 and ALB log delivery accept. The bootstrap module marks its six with `checkov:skip` and a reason; Code Scanning still lists them as open.
+  - No ALB access logs (CKV_AWS_91) and no server access logs on the artifact bucket (CKV_AWS_18). Both need a log bucket, and ALB and S3 log delivery only write to SSE-S3 buckets, so Checkov flags that bucket for KMS, replication and event notifications. The bootstrap log bucket makes that trade behind `checkov:skip`; for the main stack it waits for a decision.
+  - No cross-region replication or event notifications on the artifact and state buckets (CKV_AWS_144, CKV2_AWS_62), and SSE-S3 rather than KMS on the bootstrap log bucket (CKV_AWS_145). The bootstrap module marks its six with `checkov:skip` and a reason; Code Scanning still lists them as open.
   - CKV2_AWS_5 (security groups not attached) is a false positive: the groups reach the ALB, the launch template and the ECS service through module outputs, which Checkov's graph does not follow.
 
 ## Troubleshooting

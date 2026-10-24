@@ -37,3 +37,8 @@ output "ecs_infrastructure_role_arn" {
   description = "Role ECS assumes for native blue/green (null for codedeploy)."
   value       = one(aws_iam_role.ecs_infrastructure_role[*].arn)
 }
+
+output "vpc_flow_logs_role_arn" {
+  description = "Role VPC Flow Logs assumes to write the flow log group."
+  value       = aws_iam_role.vpc_flow_logs_role.arn
+}

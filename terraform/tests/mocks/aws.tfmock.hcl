@@ -15,13 +15,6 @@ mock_data "aws_kms_alias" {
   }
 }
 
-# The mocked json would be random text; a bucket policy needs valid JSON.
-mock_data "aws_iam_policy_document" {
-  defaults = {
-    json = "{\"Version\":\"2012-10-17\",\"Statement\":[]}"
-  }
-}
-
 mock_data "aws_ssm_parameter" {
   defaults = {
     value = "ami-0123456789abcdef0"
@@ -43,6 +36,12 @@ mock_resource "aws_iam_instance_profile" {
 mock_resource "aws_kms_key" {
   defaults = {
     arn = "arn:aws:kms:us-east-1:111122223333:key/00000000-0000-0000-0000-000000000000"
+  }
+}
+
+mock_resource "aws_cloudwatch_log_group" {
+  defaults = {
+    arn = "arn:aws:logs:us-east-1:111122223333:log-group:mock-vpc-flow-logs"
   }
 }
 

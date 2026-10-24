@@ -85,7 +85,8 @@ CI (`.github/workflows/ci.yml`): the shared workflow (fmt, validate, Checkov wit
 - Pipeline trigger branches in tfvars are `master` and `feature/modifications` -- those are the deployed app-source branches CodePipeline watches, not this repo's CI branch (`main`). Don't "fix" them to `main` without checking the live connection setup.
 - Tagging is provider-level `default_tags` only. Modules do not accept a `tags` variable -- never add per-resource `tags =` (exception: `aws_autoscaling_group` `tag {}` blocks, required by AWS).
 - The ECS security group only allows TCP 443 out (1.5.0). A workload that needs another port gets its own egress rule; don't widen `ecs_egress` back to all protocols.
-- One log bucket (`s3/`) takes the ALB access logs (`alb/<env>-<project>/`), VPC flow logs (`vpc-flow-logs/`) and the artifact bucket's access logs (`artifact-bucket/`). Its policy is per prefix: a new log source needs its own statement. It must stay SSE-S3 (ALB and S3 log delivery reject KMS).
+- VPC flow logs go to the `<project>-vpc-flow-logs` log group, encrypted with the project CMK. Three modules build that name on their own (`vpc/` creates it, `iam/` scopes the flow-log role to it, `kms/` names it in the key policy's encryption-context condition): rename it in all three or the flow log stops writing. Another CMK-encrypted log group needs its own key policy statement.
+- ALB access logs and S3 server access logs are off on purpose: both need an SSE-S3 log bucket, which Checkov flags 3 ways, and the Code Scanning gate then fails the PR (README Known limitations).
 - Listeners ignore `default_action` and the ECS-native listener rules ignore `action`: CodeDeploy / ECS move traffic there, and Terraform must not move it back.
 - The buildspec starts `dockerd` manually even though the CodeBuild module already sets `privileged_mode = true`; if builds hang there, that is why.
 - Test_App uses Yarn, not pnpm -- CodeBuild and the Dockerfile assume Yarn.

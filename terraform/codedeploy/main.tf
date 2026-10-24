@@ -17,7 +17,6 @@ module "ecs" {
   ecs_instance_role_name = var.ecs_instance_role_name
   task_definition_arn    = var.task_definition_arn
   s3_bucket_name         = var.s3_bucket_name
-  log_bucket_name        = var.log_bucket_name
   kms_key_arn            = var.kms_key_arn
   alarm_email            = var.alarm_email
 

@@ -13,13 +13,19 @@ resource "aws_default_security_group" "default" {
   vpc_id = aws_vpc.main.id
 }
 
-# Flow logs land in the log bucket from the s3 module, whose policy lets
-# delivery.logs.amazonaws.com write under vpc-flow-logs/.
+# Flow logs for all traffic, into a log group encrypted with the project CMK
+# (its key policy names this group). The role comes from the iam module.
+resource "aws_cloudwatch_log_group" "flow_logs" {
+  name              = "${var.name}-vpc-flow-logs"
+  retention_in_days = var.flow_log_retention_days
+  kms_key_id        = var.kms_key_arn
+}
+
 resource "aws_flow_log" "main" {
-  vpc_id               = aws_vpc.main.id
-  traffic_type         = "ALL"
-  log_destination_type = "s3"
-  log_destination      = "${var.flow_log_bucket_arn}/vpc-flow-logs/"
+  vpc_id          = aws_vpc.main.id
+  traffic_type    = "ALL"
+  log_destination = aws_cloudwatch_log_group.flow_logs.arn
+  iam_role_arn    = var.flow_log_role_arn
 }
 
 

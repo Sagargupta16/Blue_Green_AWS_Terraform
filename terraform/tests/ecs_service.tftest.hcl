@@ -26,7 +26,6 @@ variables {
   task_definition_arn    = "arn:aws:ecs:us-east-1:111122223333:task-definition/test-app:1"
   ecs_instance_role_name = "test-app-EcsInstanceRole"
   s3_bucket_name         = "test-app-artifacts"
-  log_bucket_name        = "test-app-logs"
   kms_key_arn            = "arn:aws:kms:us-east-1:111122223333:key/00000000-0000-0000-0000-000000000000"
 }
 

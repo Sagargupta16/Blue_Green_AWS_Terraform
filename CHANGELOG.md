@@ -3,21 +3,21 @@
 ## [1.5.0] - 2026-10-24
 
 ### Security
-- Checkov 3.3.30 on `terraform/`: 70 failed / 292 passed / 6 skipped before, 40 failed / 355 passed / 6 skipped after. That closes 33 of the 76 Checkov alerts in Code Scanning; the new log bucket adds 3 (below), and the rest are listed under Known limitations in the README.
+- Checkov 3.3.30 on `terraform/`: 70 failed / 292 passed / 6 skipped before, 41 failed / 316 passed / 6 skipped after, with no new findings. That closes 29 of the 76 Checkov alerts in Code Scanning; the rest are listed, with the reason for each, under Known limitations in the README.
 - Every security group rule has a description (CKV_AWS_23).
 - ECS egress is HTTPS only. The task and container-instance group allowed all protocols to `0.0.0.0/0`; it now allows TCP 443, which is all ECR, ECR Public, the ECS agent, CloudWatch Logs, X-Ray, SSM and dnf need (CKV_AWS_382). Security groups do not filter Amazon DNS, instance or task metadata, or the Time Sync Service.
-- The VPC's default security group is managed with no rules (CKV2_AWS_12), and the VPC writes flow logs for all traffic to S3 (CKV2_AWS_11).
-- New log bucket (`<project>-logs-<pet>`): SSE-S3, versioned, public access blocked, ACLs off, TLS-only, logs expire after 90 days (`log_retention_days` in the s3 module). Each ALB writes access logs under `alb/<env>-<project>/` (CKV_AWS_91), the artifact bucket its server access logs under `artifact-bucket/` (CKV_AWS_18), and the VPC its flow logs under `vpc-flow-logs/`. The bucket policy lets each log service write only its own prefix and only for this account. ALB and S3 log delivery accept SSE-S3 only, so Checkov flags the bucket for KMS (CKV_AWS_145), and for replication and event notifications (CKV_AWS_144, CKV2_AWS_62), the same three trade-offs the bootstrap log bucket makes.
+- The VPC's default security group is managed with no rules (CKV2_AWS_12).
+- VPC flow logs for all traffic go to the `<project>-vpc-flow-logs` log group, encrypted with the project CMK and kept 365 days (`flow_log_retention_days` in the vpc module) (CKV2_AWS_11). The new `<project>-VpcFlowLogsRole` writes only to that group, uses the CMK only through CloudWatch Logs, and only flow logs in this account can assume it. A new key policy statement lets CloudWatch Logs use the CMK for that one log group.
 - Artifact bucket: versioning (CKV_AWS_21), SSE-KMS with the project CMK and a bucket key (CKV_AWS_145), a public access block (CKV2_AWS_6) and a lifecycle rule that expires overwritten versions after 30 days and aborts stale multipart uploads (CKV2_AWS_61).
 - CodeDeploy role scoped to resources: services and task sets on this project's clusters, `ModifyListener` and `ModifyRule` on this project's ALBs, `DescribeAlarms` on its alarms. Only the ELB `Describe*` calls, which have no resource-level permissions, stay on `*` (CKV_AWS_290, CKV_AWS_355).
 - Both containers run with a read-only root filesystem (CKV_AWS_336).
 - Test_App: `express-rate-limit` 8.7.1 at 300 requests a minute per client, with `trust proxy` set to the one ALB hop so it counts clients, not ALB nodes (CodeQL `js/missing-rate-limiting`).
 
 ### Changed
-- Upgrading a running stack: the four rules that only gain a description update in place. `ecs_egress` is replaced (protocol and ports force a new rule), so the ECS group has no egress rule for the seconds between the delete and the create. Both task definitions get a new revision; running services keep theirs until the next pipeline deploy, which renders from the new one. The rest is added or updated in place: ALB access logs, the artifact bucket's versioning, encryption, public access block, logging and lifecycle, the log bucket, the flow log and the default security group.
+- Upgrading a running stack: the four rules that only gain a description update in place. `ecs_egress` is replaced (protocol and ports force a new rule), so the ECS group has no egress rule for the seconds between the delete and the create. Both task definitions get a new revision; running services keep theirs until the next pipeline deploy, which renders from the new one. The rest is added or updated in place: the artifact bucket's versioning, encryption, public access block and lifecycle, the key policy, the CodeDeploy policy, the flow log with its log group and role, and the default security group.
 - Breaking for custom workloads: a container that calls out on anything but TCP 443 (a database on 5432, SMTP, plain HTTP) needs its own egress rule on the ECS group.
 - Breaking for anything launched into the VPC's default security group by hand: managing that group removes the allow-all rules AWS created.
-- New cost: VPC flow logs delivered to S3 are billed per GB, and the ALB and access logs add S3 storage, capped by the 90-day expiry.
+- New cost: CloudWatch Logs ingestion and storage for the flow logs (all traffic, 365 days).
 
 ### Removed
 - `terraform/codecommit/`, deprecated since 1.0.1 and never called from the root module (CKV2_AWS_37). Anything that sources it directly should pin `bd3b4e5`, the last commit that has it.

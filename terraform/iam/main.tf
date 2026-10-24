@@ -4,6 +4,9 @@ locals {
   log_group_arn_any = "arn:aws:logs:${var.region}:${var.account_id}:log-group:*"
   ecr_repo_arn_any  = "arn:aws:ecr:${var.region}:${var.account_id}:repository/*"
 
+  # The vpc module names its flow log group <name>-vpc-flow-logs.
+  flow_log_group_arn = "arn:aws:logs:${var.region}:${var.account_id}:log-group:${var.name}-vpc-flow-logs"
+
   codebuild_project_arns = [
     for p in var.codebuild_project_names :
     "arn:aws:codebuild:${var.region}:${var.account_id}:project/${p}-CodeBuild"
@@ -446,4 +449,69 @@ resource "aws_iam_role_policy_attachment" "ecs_infrastructure_lb" {
 
   role       = aws_iam_role.ecs_infrastructure_role[0].name
   policy_arn = "arn:aws:iam::aws:policy/AmazonECSInfrastructureRolePolicyForLoadBalancers"
+}
+
+
+# VPC flow logs role
+#
+# VPC Flow Logs assumes this role to write into the CMK-encrypted flow log
+# group. DescribeLogGroups has no resource-level permissions.
+
+resource "aws_iam_role" "vpc_flow_logs_role" {
+  name = "${var.name}-VpcFlowLogsRole"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "vpc-flow-logs.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+      Condition = {
+        StringEquals = { "aws:SourceAccount" = var.account_id }
+        ArnLike      = { "aws:SourceArn" = "arn:aws:ec2:${var.region}:${var.account_id}:vpc-flow-log/*" }
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "vpc_flow_logs_inline" {
+  name = "${var.name}-VpcFlowLogsPolicy"
+  role = aws_iam_role.vpc_flow_logs_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogStreams"
+        ]
+        Resource = [
+          local.flow_log_group_arn,
+          "${local.flow_log_group_arn}:*"
+        ]
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["logs:DescribeLogGroups"]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "kms:Encrypt",
+          "kms:ReEncrypt*",
+          "kms:Decrypt",
+          "kms:GenerateDataKey*",
+          "kms:Describe*"
+        ]
+        Resource = var.kms_key_arn
+        Condition = {
+          StringEquals = { "kms:ViaService" = "logs.${var.region}.amazonaws.com" }
+        }
+      }
+    ]
+  })
 }
