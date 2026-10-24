@@ -4,6 +4,9 @@ locals {
   log_group_arn_any = "arn:aws:logs:${var.region}:${var.account_id}:log-group:*"
   ecr_repo_arn_any  = "arn:aws:ecr:${var.region}:${var.account_id}:repository/*"
 
+  # The vpc module names its flow log group <name>-vpc-flow-logs.
+  flow_log_group_arn = "arn:aws:logs:${var.region}:${var.account_id}:log-group:${var.name}-vpc-flow-logs"
+
   codebuild_project_arns = [
     for p in var.codebuild_project_names :
     "arn:aws:codebuild:${var.region}:${var.account_id}:project/${p}-CodeBuild"
@@ -219,6 +222,9 @@ resource "aws_iam_role_policy" "codedeploy_inline" {
   name = "${var.name}-CodedeployPolicy"
   role = aws_iam_role.codedeploy_role.id
 
+  # Resource-scoped to this project's per-env clusters (<env>-<name>-cluster),
+  # ALBs (<env>-<name>-ALB) and rollback alarms (<env>-<name>-...). The ELB
+  # Describe* calls have no resource-level permissions and stay on "*".
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -226,27 +232,42 @@ resource "aws_iam_role_policy" "codedeploy_inline" {
         Effect = "Allow"
         Action = [
           "ecs:DescribeServices",
+          "ecs:UpdateServicePrimaryTaskSet"
+        ]
+        Resource = "arn:aws:ecs:${var.region}:${var.account_id}:service/*-${var.name}-cluster/*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
           "ecs:CreateTaskSet",
-          "ecs:UpdateServicePrimaryTaskSet",
           "ecs:DeleteTaskSet"
         ]
-        Resource = "*"
+        Resource = "arn:aws:ecs:${var.region}:${var.account_id}:task-set/*-${var.name}-cluster/*"
       },
       {
         Effect = "Allow"
         Action = [
           "elasticloadbalancing:DescribeTargetGroups",
           "elasticloadbalancing:DescribeListeners",
-          "elasticloadbalancing:ModifyListener",
-          "elasticloadbalancing:DescribeRules",
-          "elasticloadbalancing:ModifyRule"
+          "elasticloadbalancing:DescribeRules"
         ]
         Resource = "*"
       },
       {
+        Effect = "Allow"
+        Action = [
+          "elasticloadbalancing:ModifyListener",
+          "elasticloadbalancing:ModifyRule"
+        ]
+        Resource = [
+          "arn:aws:elasticloadbalancing:${var.region}:${var.account_id}:listener/app/*-${var.name}-*/*",
+          "arn:aws:elasticloadbalancing:${var.region}:${var.account_id}:listener-rule/app/*-${var.name}-*/*"
+        ]
+      },
+      {
         Effect   = "Allow"
         Action   = ["cloudwatch:DescribeAlarms"]
-        Resource = "*"
+        Resource = "arn:aws:cloudwatch:${var.region}:${var.account_id}:alarm:*-${var.name}-*"
       },
       {
         Effect = "Allow"
@@ -428,4 +449,69 @@ resource "aws_iam_role_policy_attachment" "ecs_infrastructure_lb" {
 
   role       = aws_iam_role.ecs_infrastructure_role[0].name
   policy_arn = "arn:aws:iam::aws:policy/AmazonECSInfrastructureRolePolicyForLoadBalancers"
+}
+
+
+# VPC flow logs role
+#
+# VPC Flow Logs assumes this role to write into the CMK-encrypted flow log
+# group. DescribeLogGroups has no resource-level permissions.
+
+resource "aws_iam_role" "vpc_flow_logs_role" {
+  name = "${var.name}-VpcFlowLogsRole"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "vpc-flow-logs.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+      Condition = {
+        StringEquals = { "aws:SourceAccount" = var.account_id }
+        ArnLike      = { "aws:SourceArn" = "arn:aws:ec2:${var.region}:${var.account_id}:vpc-flow-log/*" }
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "vpc_flow_logs_inline" {
+  name = "${var.name}-VpcFlowLogsPolicy"
+  role = aws_iam_role.vpc_flow_logs_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogStreams"
+        ]
+        Resource = [
+          local.flow_log_group_arn,
+          "${local.flow_log_group_arn}:*"
+        ]
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["logs:DescribeLogGroups"]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "kms:Encrypt",
+          "kms:ReEncrypt*",
+          "kms:Decrypt",
+          "kms:GenerateDataKey*",
+          "kms:Describe*"
+        ]
+        Resource = var.kms_key_arn
+        Condition = {
+          StringEquals = { "kms:ViaService" = "logs.${var.region}.amazonaws.com" }
+        }
+      }
+    ]
+  })
 }

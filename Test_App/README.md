@@ -99,6 +99,7 @@ This application is designed to work with AWS CodePipeline:
 ## 🧪 Features
 
 - `GET /` serves the React build (the ALB health check target); `GET /api/hello`, `/api/goodbye`, `/api/data` return JSON
+- Rate limit of 300 requests a minute per client on every route (`express-rate-limit`, in memory per task); the app trusts one proxy hop, the ALB, for the client address
 - AWS X-Ray integration for distributed tracing
 - Concurrent frontend and backend development
 - Automated testing with Jest + Supertest against the real `index.js`, with an 80% line-coverage threshold that fails the build

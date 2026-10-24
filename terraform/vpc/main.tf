@@ -6,6 +6,28 @@ resource "aws_vpc" "main" {
   enable_dns_hostnames = true
 }
 
+# Nothing in the stack uses the VPC's default security group. Managing it
+# with no rules strips the allow-all rules AWS creates, so anything launched
+# without a group of its own gets no network access.
+resource "aws_default_security_group" "default" {
+  vpc_id = aws_vpc.main.id
+}
+
+# Flow logs for all traffic, into a log group encrypted with the project CMK
+# (its key policy names this group). The role comes from the iam module.
+resource "aws_cloudwatch_log_group" "flow_logs" {
+  name              = "${var.name}-vpc-flow-logs"
+  retention_in_days = var.flow_log_retention_days
+  kms_key_id        = var.kms_key_arn
+}
+
+resource "aws_flow_log" "main" {
+  vpc_id          = aws_vpc.main.id
+  traffic_type    = "ALL"
+  log_destination = aws_cloudwatch_log_group.flow_logs.arn
+  iam_role_arn    = var.flow_log_role_arn
+}
+
 
 # Subnets
 

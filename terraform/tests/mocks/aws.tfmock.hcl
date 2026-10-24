@@ -39,6 +39,12 @@ mock_resource "aws_kms_key" {
   }
 }
 
+mock_resource "aws_cloudwatch_log_group" {
+  defaults = {
+    arn = "arn:aws:logs:us-east-1:111122223333:log-group:mock-vpc-flow-logs"
+  }
+}
+
 mock_resource "aws_sns_topic" {
   defaults = {
     arn = "arn:aws:sns:us-east-1:111122223333:mock-alarms"

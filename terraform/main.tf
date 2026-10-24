@@ -1,14 +1,18 @@
 # Foundation
 
 module "s3" {
-  source = "./s3"
-  name   = var.project_name
+  source      = "./s3"
+  name        = var.project_name
+  kms_key_arn = module.kms.kms_key_arn
 }
 
 module "vpc" {
   source             = "./vpc"
+  name               = var.project_name
   availability_zones = var.availability_zones
   vpc_cidr           = var.vpc_cidr
+  kms_key_arn        = module.kms.kms_key_arn
+  flow_log_role_arn  = module.iam.vpc_flow_logs_role_arn
 }
 
 module "kms" {
